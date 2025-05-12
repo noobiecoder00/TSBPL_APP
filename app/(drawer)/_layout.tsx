@@ -2,11 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Drawer } from "expo-router/drawer";
 import FlashMessage from "react-native-flash-message";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { CustomDrawerContent } from "./CustomDrawerContent"; // Adjust path as needed
 
 export default function DrawerLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Drawer
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{
           headerStyle: {
             backgroundColor: "#4A90E2",
@@ -37,23 +39,19 @@ export default function DrawerLayout() {
           }}
         />
         <Drawer.Screen
-          name="CWCreateForm"
-          options={{
-            drawerLabel: "CW Create Form",
-            title: "CW Create Form",
-            drawerIcon: ({ color }) => (
-              <Ionicons name="create-outline" size={24} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="contractor-worker-master"
+          name="Vendor/index"
           options={{
             drawerLabel: "Contractor Worker Master",
             title: "Contractor Worker Master",
-            drawerIcon: ({ color }) => (
-              <Ionicons name="people-outline" size={24} color={color} />
-            ),
+            drawerItemStyle: { height: 0 }, // Hide this default item, show via custom drawer
+          }}
+        />
+        <Drawer.Screen
+          name="Vendor/CWCreateForm"
+          options={{
+            drawerLabel: "CW Create Form",
+            title: "CW Create Form",
+            drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
           }}
         />
         <Drawer.Screen

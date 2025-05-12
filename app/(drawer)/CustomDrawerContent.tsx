@@ -1,92 +1,81 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
+  DrawerContentComponentProps,
   DrawerContentScrollView,
-  DrawerNavigationProp,
+  DrawerItem,
 } from "@react-navigation/drawer";
-import { useNavigation } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
 
-type DrawerParamList = {
-  home: undefined;
-  "contractor-worker-master": undefined;
-  "contractor-worker-master/CWCreateForm": undefined;
-  safety: undefined;
-  construction: undefined;
-};
+export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
+  props
+) => {
+  const [isVendorMenuOpen, setIsVendorMenuOpen] = useState(false);
 
-type NavigationProp = DrawerNavigationProp<DrawerParamList>;
-
-export default function CustomDrawerContent(props: any) {
-  const navigation = useNavigation<NavigationProp>();
-
+  const toggleVendorMenu = () => setIsVendorMenuOpen((prev) => !prev);
   return (
     <DrawerContentScrollView {...props}>
-      <Pressable
-        style={styles.item}
-        onPress={() => navigation.navigate("home")}
-      >
-        <Ionicons name="grid-outline" size={20} color="#333" />
-        <Text style={styles.label}>Dashboard</Text>
-      </Pressable>
+      <DrawerItem
+        label="Dashboard"
+        onPress={() => props.navigation.navigate("home")}
+        icon={({ color }) => (
+          <Ionicons name="grid-outline" size={24} color={color} />
+        )}
+      />
 
-      {/* Contractor Worker Master Group */}
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>Contractor Worker Master</Text>
-        <Pressable
-          style={styles.subItem}
-          onPress={() =>
-            navigation.navigate("contractor-worker-master/CWCreateForm")
-          }
+      {/* Vendor Menu with Toggle */}
+      <TouchableOpacity onPress={toggleVendorMenu}>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", padding: 16 }}
         >
-          <Ionicons name="create-outline" size={18} color="#333" />
-          <Text style={styles.label}>CW Create Form</Text>
-        </Pressable>
-      </View>
+          <Ionicons name="briefcase-outline" size={24} color="#333" />
+          <Text style={{ marginLeft: 16, fontSize: 16, color: "#333" }}>
+            Vendor
+          </Text>
+          <Ionicons
+            name={isVendorMenuOpen ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="#666"
+            style={{ marginLeft: "auto" }}
+          />
+        </View>
+      </TouchableOpacity>
 
-      <Pressable
-        style={styles.item}
-        onPress={() => navigation.navigate("safety")}
-      >
-        <Ionicons name="shield-checkmark-outline" size={20} color="#333" />
-        <Text style={styles.label}>Safety</Text>
-      </Pressable>
+      {/* Nested Vendor Items */}
+      {isVendorMenuOpen && (
+        <View style={{ paddingLeft: 20 }}>
+          <DrawerItem
+            label="Contractor Worker Master"
+            onPress={() => props.navigation.navigate("Vendor/index")}
+            icon={({ color }) => (
+              <Ionicons name="people-outline" size={20} color={color} />
+            )}
+          />
+        </View>
+      )}
 
-      <Pressable
-        style={styles.item}
-        onPress={() => navigation.navigate("construction")}
-      >
-        <Ionicons name="construct-outline" size={20} color="#333" />
-        <Text style={styles.label}>Construction</Text>
-      </Pressable>
+      <DrawerItem
+        label="CW Create Form"
+        onPress={() => props.navigation.navigate("Vendor/CWCreateForm")}
+        icon={({ color }) => (
+          <Ionicons name="create-outline" size={20} color={color} />
+        )}
+      />
+      <DrawerItem
+        label="Safety"
+        onPress={() => props.navigation.navigate("safety")}
+        icon={({ color }) => (
+          <Ionicons name="shield-checkmark-outline" size={24} color={color} />
+        )}
+      />
+
+      <DrawerItem
+        label="Construction"
+        onPress={() => props.navigation.navigate("construction")}
+        icon={({ color }) => (
+          <Ionicons name="construct-outline" size={24} color={color} />
+        )}
+      />
     </DrawerContentScrollView>
   );
-}
-
-const styles = StyleSheet.create({
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-  },
-  label: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#333",
-  },
-  group: {
-    marginVertical: 10,
-    paddingLeft: 10,
-  },
-  groupTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#4A90E2",
-  },
-  subItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingLeft: 20,
-    paddingVertical: 8,
-  },
-});
+};
