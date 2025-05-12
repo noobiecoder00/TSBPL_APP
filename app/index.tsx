@@ -6,14 +6,13 @@ export default function Index() {
   const router = useRouter();
 
   useEffect(() => {
-    // Ensure this runs first
-    const redirectToSplash = () => {
-      router.replace("/pages/splash");
-    };
-
-    // Immediate execution
-    redirectToSplash();
+    console.log("[Index] App started - Redirecting to splash screen");
+    // Use setTimeout to ensure the component renders first
+    setTimeout(() => {
+      router.push("/pages/splash");
+    }, 0);
   }, []);
 
+  console.log("[Index] Rendering index component");
   return <View />;
 }

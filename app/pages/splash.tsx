@@ -28,46 +28,65 @@ export default function SplashScreen() {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  console.log("[Splash] Rendering splash screen");
+
   const fadeOut = () => {
+    console.log("[Splash] Starting fade out animation");
     return new Promise<void>((resolve) => {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
-      }).start(() => resolve());
+      }).start(() => {
+        console.log("[Splash] Fade out animation completed");
+        resolve();
+      });
     });
   };
 
   useEffect(() => {
     let isMounted = true;
+    console.log("[Splash] Starting splash screen effect");
 
     const checkAuth = async () => {
       try {
+        console.log("[Splash] Checking authentication");
         const userData = await AsyncStorage.getItem("userData");
+        console.log("[Splash] User data exists:", !!userData);
 
         // Wait for 3 seconds to show splash screen
+        console.log("[Splash] Waiting for 3 seconds");
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          console.log("[Splash] Component unmounted, stopping navigation");
+          return;
+        }
 
         // Fade out before navigation
         await fadeOut();
         if (userData) {
-          router.replace("/pages/home");
+          console.log("[Splash] User authenticated, navigating to home");
+          router.replace("/(drawer)/home");
         } else {
+          console.log("[Splash] No user data, navigating to login");
           router.replace("/pages/login");
         }
       } catch (error) {
+        console.log("[Splash] Error during auth check:", error);
         if (isMounted) {
           await fadeOut();
+          console.log("[Splash] Error occurred, navigating to login");
           router.replace("/pages/login");
         }
       }
     };
 
+    // Start the auth check immediately
     checkAuth();
 
     return () => {
+      console.log("[Splash] Cleaning up splash screen effect");
       isMounted = false;
     };
   }, []);

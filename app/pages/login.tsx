@@ -146,6 +146,7 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           placeholder="Enter your Pno"
           error={errors.email}
+          keyboardType="number-pad"
         />
         <CustomInput
           label="Password"

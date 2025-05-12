@@ -1,5 +1,11 @@
 import React from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  KeyboardTypeOptions,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { COLORS, FONTS, SIZES } from "../constants/theme";
 
 interface CustomInputProps {
@@ -9,6 +15,7 @@ interface CustomInputProps {
   placeholder?: string;
   secureTextEntry?: boolean;
   error?: string;
+  keyboardType?: KeyboardTypeOptions;
 }
 
 export const CustomInput: React.FC<CustomInputProps> = ({
@@ -17,6 +24,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   onChangeText,
   placeholder,
   secureTextEntry = false,
+  keyboardType = "default",
   error,
 }) => {
   return (
@@ -30,6 +38,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         placeholderTextColor={COLORS.gray}
         secureTextEntry={secureTextEntry}
         autoCapitalize="none"
+        keyboardType={keyboardType}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
