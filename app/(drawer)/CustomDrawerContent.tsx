@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
@@ -310,7 +311,11 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
       />
       <DrawerItem
         label="Logout"
-        onPress={() => router.push("../pages/login")}
+        onPress={() => {
+          // Clear any stored data if needed
+          AsyncStorage.clear();
+          router.replace("/pages/login");
+        }}
         icon={({ color }) => (
           <Ionicons name="log-out-outline" size={24} color={color} />
         )}

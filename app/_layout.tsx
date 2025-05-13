@@ -56,6 +56,7 @@ export default function RootLayout() {
       <Stack.Screen name="(drawer)" />
       <Stack.Screen name="pages/login" />
       <Stack.Screen name="pages/splash" />
+      <Stack.Screen name="pages/changePwd" />
     </Stack>
   );
 }
