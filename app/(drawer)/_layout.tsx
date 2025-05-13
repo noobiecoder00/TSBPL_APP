@@ -41,8 +41,8 @@ export default function DrawerLayout() {
         <Drawer.Screen
           name="Vendor/index"
           options={{
-            drawerLabel: "Contractor Worker Master",
-            title: "Contractor Worker Master",
+            drawerLabel: "Contractor Worker",
+            title: "Contractor Worker",
             drawerItemStyle: { height: 0 }, // Hide this default item, show via custom drawer
           }}
         />
@@ -54,6 +54,7 @@ export default function DrawerLayout() {
             drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
           }}
         />
+
         <Drawer.Screen
           name="safety"
           options={{
@@ -69,6 +70,20 @@ export default function DrawerLayout() {
           }}
         />
         <Drawer.Screen
+          name="Safety/tpiExpiry"
+          options={{
+            drawerLabel: "TPI Expiry",
+            title: "TPI Expiry",
+          }}
+        />
+        <Drawer.Screen
+          name="Safety/checklist"
+          options={{
+            drawerLabel: "Check List",
+            title: "Check List",
+          }}
+        />
+        <Drawer.Screen
           name="construction"
           options={{
             drawerLabel: "Construction",
@@ -76,6 +91,50 @@ export default function DrawerLayout() {
             drawerIcon: ({ color }) => (
               <Ionicons name="construct-outline" size={24} color={color} />
             ),
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/DailyProjectProgressEntry/DailyProjectIndex"
+          options={{
+            drawerLabel: "Daily Project Progress Entry",
+            title: "Daily Project Progress Entry",
+            drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/DailyProjectProgressEntry/dailyProjectCreateForm"
+          options={{
+            drawerLabel: "Daily Project Progress Entry",
+            title: "Daily Project Progress Entry",
+            drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/CustomerBilling/CustomerBillingIndex"
+          options={{
+            drawerLabel: "Customer Bill Entry",
+            title: "Customer Bill Entry",
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/CustomerBilling/customerBillingCreateForm"
+          options={{
+            drawerLabel: "Customer Bill Entry",
+            title: "Customer Bill Entry",
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/BuilderBilling/BuilderBillingIndex"
+          options={{
+            drawerLabel: "Builder Bill Entry",
+            title: "Builder Bill Entry",
+          }}
+        />
+        <Drawer.Screen
+          name="Construction/BuilderBilling/builderBillingCreateForm"
+          options={{
+            drawerLabel: "Builder Bill Entry",
+            title: "Builder Bill Entry",
           }}
         />
       </Drawer>

@@ -8,13 +8,13 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SceneMap, TabView } from "react-native-tab-view";
-import { COLORS } from "../../../constants/theme"; // Adjust p
-import cwAll from "./cwAll";
-import cwPending from "./cwPending";
+import { COLORS } from "../../../../constants/theme"; // Adjust p
+import customerBillingAll from "./customerBillingAll";
+import customerBillingPending from "./customerBillingPending";
 
 const renderScene = SceneMap({
-  first: cwAll,
-  second: cwPending,
+  first: customerBillingAll,
+  second: customerBillingPending,
 });
 
 const routes = [
@@ -22,14 +22,18 @@ const routes = [
   { key: "second", title: "Pending With Me" },
 ];
 
-const ContractorWorkerMaster = () => {
+const CustomerBillingIndex = () => {
   const router = useRouter();
   const layout = useWindowDimensions();
   const [index, setIndex] = React.useState(0);
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        onPress={() => router.push("/Vendor/CWCreateForm")}
+        onPress={() =>
+          router.navigate(
+            "/Construction/CustomerBilling/customerBillingCreateForm"
+          )
+        }
         style={styles.createButton}
       >
         <Text style={styles.createButtonText}>Create New</Text>
@@ -44,12 +48,12 @@ const ContractorWorkerMaster = () => {
   );
 };
 
-export default ContractorWorkerMaster;
+export default CustomerBillingIndex;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.background || "#fff",
     // justifyContent: "center",
   },
   title: {

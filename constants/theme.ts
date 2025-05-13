@@ -5,7 +5,7 @@ export const COLORS = {
   text: "#000000",
   error: "#FF3B30",
   success: "#34C759",
-  gray: "#8E8E93",
+  gray: "#a2a2a3",
 };
 
 export const FONTS = {

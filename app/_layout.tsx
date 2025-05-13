@@ -9,8 +9,6 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    console.log("[Layout] Current route segments:", segments.join("/"));
-
     const checkAuth = async () => {
       try {
         console.log("[Layout] Starting auth check");
@@ -21,7 +19,6 @@ export default function RootLayout() {
 
         // For initial route and splash, just set ready
         if (!currentRoute || currentRoute === "pages/splash") {
-          console.log("[Layout] Initial route or splash, setting ready");
           setIsReady(true);
           return;
         }
@@ -38,7 +35,6 @@ export default function RootLayout() {
         console.log("[Layout] Auth check error:", error);
         router.replace("/pages/login");
       } finally {
-        console.log("[Layout] Auth check completed");
         setIsReady(true);
       }
     };
@@ -47,11 +43,9 @@ export default function RootLayout() {
   }, [segments]);
 
   if (!isReady) {
-    console.log("[Layout] App not ready, returning null");
     return null;
   }
 
-  console.log("[Layout] Rendering layout with Stack navigator");
   return (
     <Stack
       screenOptions={{

@@ -13,6 +13,5 @@ export default function Index() {
     }, 0);
   }, []);
 
-  console.log("[Index] Rendering index component");
   return <View />;
 }

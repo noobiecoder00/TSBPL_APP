@@ -41,7 +41,7 @@ export default function Home() {
 
   const handleCreateCW = () => {
     // Navigate to Create CW page
-    router.push("/pages/CWCreateForm");
+    router.push("/(drawer)/Vendor/CWCreateForm");
   };
 
   const handleViewCW = () => {
