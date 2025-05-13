@@ -1,4 +1,3 @@
-import { CustomButton } from "@/components/CustomButton";
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -30,35 +29,6 @@ export default function Home() {
     loadUserData();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem("userData");
-      router.replace("/pages/login");
-    } catch (error) {
-      console.error("Error during logout:", error);
-    }
-  };
-
-  const handleCreateCW = () => {
-    // Navigate to Create CW page
-    router.push("/(drawer)/Vendor/CWCreateForm");
-  };
-
-  const handleViewCW = () => {
-    // Navigate to View CW page
-    router.push("/pages/view-cw" as any);
-  };
-
-  const handleSafety = () => {
-    // Navigate to Safety page
-    router.push("/pages/safety" as any);
-  };
-
-  const handleConstruction = () => {
-    // Navigate to Construction page
-    router.push("/pages/construction" as any);
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -70,31 +40,6 @@ export default function Home() {
             <Text style={styles.userText}>Role: {userData.role}</Text>
           </View>
         )}
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <CustomButton
-          title="CW Create"
-          onPress={handleCreateCW}
-          variant="primary"
-        />
-        <CustomButton
-          title="CW View"
-          onPress={handleViewCW}
-          variant="primary"
-        />
-        <CustomButton title="Safety" onPress={handleSafety} variant="primary" />
-        <CustomButton title="Safety" onPress={handleSafety} variant="primary" />
-        <CustomButton
-          title="Construction"
-          onPress={handleConstruction}
-          variant="primary"
-        />
-        <CustomButton
-          title="Logout"
-          onPress={handleLogout}
-          variant="secondary"
-        />
       </View>
     </View>
   );

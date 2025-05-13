@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Drawer } from "expo-router/drawer";
+import { Image } from "react-native";
 import FlashMessage from "react-native-flash-message";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CustomDrawerContent } from "./CustomDrawerContent"; // Adjust path as needed
@@ -35,6 +36,13 @@ export default function DrawerLayout() {
             title: "Dashboard",
             drawerIcon: ({ color }) => (
               <Ionicons name="grid-outline" size={24} color={color} />
+            ),
+            headerRight: () => (
+              <Image
+                source={require("@/assets/images/logo.png")}
+                style={{ width: 100, height: 100, marginRight: 10 }}
+                resizeMode="contain"
+              />
             ),
           }}
         />

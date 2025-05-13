@@ -1,6 +1,13 @@
 import { COLORS, SIZES } from "@/constants/theme";
+import { useRouter } from "expo-router";
 import React from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 // Sample data array
 const vendorData = Array(10).fill({
@@ -13,8 +20,13 @@ const vendorData = Array(10).fill({
 });
 
 const tpiExpiry = () => {
+  const router = useRouter();
+
   const renderItem = ({ item }: { item: (typeof vendorData)[0] }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => router.push("/Safety/tpiDetails")}
+    >
       <View style={styles.content}>
         <InfoRow label="Reference No" value={item.cwName} />
         <InfoRow label="Equipment Category" value={item.contact} />
@@ -23,7 +35,7 @@ const tpiExpiry = () => {
         <InfoRow label="Last Checked On" value={item.vendorDetails} />
         <InfoRow label="Actions" value={item.department} />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -97,7 +109,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.medium,
     color: "#000",
     fontWeight: "600",
-    textAlign: "right",
+    textAlign: "center",
   },
   statusInProgress: {
     color: "#FFA500",
