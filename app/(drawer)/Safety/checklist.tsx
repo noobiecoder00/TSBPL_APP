@@ -5,7 +5,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 // Sample data array
 const vendorData = Array(10).fill({
   cwName: "EQP-FAR/05-25/00001",
-  contact: "Tools & Tackles",
+  contact: "Tools ",
   gender: "Wire Ropes",
   bloodGroup: "31-05-2025",
   vendorDetails: "11-05-2025",
