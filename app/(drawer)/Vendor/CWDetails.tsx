@@ -11,6 +11,7 @@ import { Picker } from "@react-native-picker/picker";
 import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -34,7 +35,7 @@ interface Vendor {
   name: string;
 }
 
-interface CWCreateFormResponse {
+interface CWSubmitResponse {
   success: boolean;
   message: string;
   data?: any;
@@ -52,9 +53,11 @@ interface FormDataFile {
   type: string;
 }
 
-export default function CWCreateForm() {
+export default function CWDetails() {
   const dispatch = useDispatch();
+  const { id } = useLocalSearchParams();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [cWDetails, setCWDetails] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -128,6 +131,7 @@ export default function CWCreateForm() {
   useEffect(() => {
     fetchVendors();
     loadUserData();
+    fetchCWDetails();
   }, []);
 
   const fetchVendors = async () => {
@@ -139,6 +143,121 @@ export default function CWCreateForm() {
     } catch (error) {
       console.error("Error fetching vendors:", error);
       setError("Failed to load vendors. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const fetchCWDetails = async () => {
+    dispatch(showLoading());
+    try {
+      const encodedId = id;
+      const encodedUserId = userData?.id
+        ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
+        : Buffer.from("0", "utf-8").toString("base64");
+      console.log(
+        `${API_ENDPOINTS.CW.DETAILS}?id=${encodedId}&UserId=${encodedUserId}`
+      );
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.CW.DETAILS}?id=${encodedId}&UserId=${encodedUserId}`
+      );
+
+      if (response.data?.success) {
+        const cwData = response.data.data.cwMaster;
+        setCWDetails(response.data.data);
+
+        // Set form data
+        setFormData({
+          name: cwData.cwName || "",
+          address: cwData.address || "",
+          mobileNumber: cwData.mobileNumber || "",
+          spouseContactNumber: cwData.relativeContactNo || "",
+          aadhaarNumber: cwData.aadhaarNo?.toString() || "",
+          education: cwData.education || "",
+          department: cwData.department || "",
+          jobDesignation: cwData.jobDescription || "",
+          skillType: cwData.skillType || "",
+          experience: cwData.experience || "",
+          bankName: cwData.bankName || "",
+          bankAccountNumber: cwData.bankAccountNo || "",
+          epfNumber: cwData.epxNo || "",
+          esicNumber: cwData.esicNo || "",
+          uanNumber: cwData.uanNo || "",
+        });
+
+        // Set dates
+        if (cwData.dateOfBirth) {
+          setDob(new Date(cwData.dateOfBirth));
+        }
+
+        // Set gender and blood group
+        setSelectedGender(cwData.gender);
+        setSelectedBloodGroup(cwData.bloodGroup);
+
+        // Set vendor
+        setSelectedVendor(cwData.vendorId);
+
+        // Set file previews
+        if (cwData.profilePhoto) {
+          setSelectedPhoto({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.profilePhoto}`,
+            name: cwData.profilePhoto,
+            type: "image/jpeg",
+          });
+        }
+
+        if (cwData.idProofDetail) {
+          setSelectedIdProof({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.idProofDetail}`,
+            name: cwData.idProofDetail,
+            type: "application/pdf",
+          });
+        }
+
+        if (cwData.medicalExaminationCertification) {
+          setSelectedMedicalExamination({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.medicalExaminationCertification}`,
+            name: cwData.medicalExaminationCertification,
+            type: "application/pdf",
+          });
+        }
+
+        if (cwData.policyVerificationReport) {
+          setSelectedPoliceVerification({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.policyVerificationReport}`,
+            name: cwData.policyVerificationReport,
+            type: "image/jpeg",
+          });
+        }
+
+        if (cwData.safetyInduction) {
+          setSelectedSafetyInduction({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.safetyInduction}`,
+            name: cwData.safetyInduction,
+            type: "application/pdf",
+          });
+        }
+
+        if (cwData.wahCertified) {
+          setSelectedWahCertified({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.wahCertified}`,
+            name: cwData.wahCertified,
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          });
+        }
+
+        if (cwData.firstAidTraining) {
+          setSelectedFirstAidTraining({
+            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.firstAidTraining}`,
+            name: cwData.firstAidTraining,
+            type: "image/jpeg",
+          });
+        }
+      } else {
+        console.warn("CW details not found.");
+      }
+    } catch (error) {
+      console.error("Error fetching CW details:", error);
     } finally {
       dispatch(hideLoading());
     }
@@ -450,7 +569,7 @@ export default function CWCreateForm() {
 
       // console.log("Plain JSON data:", formDataToSend);
 
-      const response = await httpClient.post<CWCreateFormResponse>(
+      const response = await httpClient.post<CWSubmitResponse>(
         API_ENDPOINTS.CW.CREATE,
         multipartFormData,
         {

@@ -20,15 +20,13 @@ export const API_ENDPOINTS = {
     LIST: "/api/Vendors",
   },
 
-  // Add more endpoint categories as needed
-  // Example:
-  // POSTS: {
-  //   LIST: '/posts',
-  //   DETAIL: (id: string) => `/posts/${id}`,
-  //   CREATE: '/posts',
-  //   UPDATE: (id: string) => `/posts/${id}`,
-  //   DELETE: (id: string) => `/posts/${id}`,
-  // },
+  // CW endpoints
+  CW: {
+    CREATE: "/api/cwMasterCreate",
+    LIST: "/api/CWMasterlist",
+    DETAILS: "/api/CW/details",
+    SUBMIT: "/api/CWSubmit",
+  },
 } as const;
 
 // API Response Types

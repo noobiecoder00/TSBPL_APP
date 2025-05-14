@@ -1,7 +1,8 @@
 import { store } from "@/app/store/store";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { Drawer } from "expo-router/drawer";
-import { Image } from "react-native";
+import { Image, TouchableOpacity } from "react-native";
 import FlashMessage from "react-native-flash-message";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Provider } from "react-redux";
@@ -72,6 +73,14 @@ export default function DrawerLayout() {
               drawerLabel: "CW Create Form",
               title: "CW Create Form",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Vendor")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
