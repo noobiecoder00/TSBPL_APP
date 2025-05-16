@@ -301,36 +301,36 @@ export default function CWCreateForm() {
       return false;
     }
 
-    if (!selectedMedicalExamination) {
-      Alert.alert(
-        "Validation Error",
-        "Medical Examination document is required"
-      );
-      return false;
-    }
+    // if (!selectedMedicalExamination) {
+    //   Alert.alert(
+    //     "Validation Error",
+    //     "Medical Examination document is required"
+    //   );
+    //   return false;
+    // }
 
-    if (!selectedPoliceVerification) {
-      Alert.alert("Validation Error", "Police Verification Report is required");
-      return false;
-    }
+    // if (!selectedPoliceVerification) {
+    //   Alert.alert("Validation Error", "Police Verification Report is required");
+    //   return false;
+    // }
 
-    if (!selectedSafetyInduction) {
-      Alert.alert("Validation Error", "Safety Induction document is required");
-      return false;
-    }
+    // if (!selectedSafetyInduction) {
+    //   Alert.alert("Validation Error", "Safety Induction document is required");
+    //   return false;
+    // }
 
-    if (!selectedWahCertified) {
-      Alert.alert("Validation Error", "WAH Certification document is required");
-      return false;
-    }
+    // if (!selectedWahCertified) {
+    //   Alert.alert("Validation Error", "WAH Certification document is required");
+    //   return false;
+    // }
 
-    if (!selectedFirstAidTraining) {
-      Alert.alert(
-        "Validation Error",
-        "First-Aid Training document is required"
-      );
-      return false;
-    }
+    // if (!selectedFirstAidTraining) {
+    //   Alert.alert(
+    //     "Validation Error",
+    //     "First-Aid Training document is required"
+    //   );
+    //   return false;
+    // }
 
     return true;
   };

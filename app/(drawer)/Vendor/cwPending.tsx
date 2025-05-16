@@ -93,7 +93,7 @@ const cwPending = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.push(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
       }}
       activeOpacity={0.85}
     >

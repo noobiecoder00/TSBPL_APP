@@ -4,8 +4,8 @@ import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -31,6 +31,13 @@ const cwAll = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const PAGE_SIZE = 10;
+
+  const resetState = () => {
+    setData([]);
+    setStart(0);
+    setHasMore(true);
+    setIsLoading(false);
+  };
 
   const fetchData = async () => {
     if (!hasMore || isLoading) return;
@@ -61,14 +68,17 @@ const cwAll = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      resetState();
+      fetchData();
+    }, [])
+  );
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.push(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
       }}
       activeOpacity={0.85}
     >

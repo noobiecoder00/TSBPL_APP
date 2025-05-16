@@ -1,52 +1,129 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import Loader from "@/components/Loader";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
-import { useRouter } from "expo-router";
-import React from "react";
+import httpClient from "@/utils/httpClient";
+import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
 
-// Sample data array
-const vendorData = Array(10).fill({
-  cwName: "EQP-FAR/05-25/00001",
-  contact: "Tools & Tackles",
-  gender: "Wire Ropes",
-  bloodGroup: "31-05-2025",
-  vendorDetails: "11-05-2025",
-  department: "Pending",
-});
+interface TpiExpiryResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+  equipmentCategoryChecklists?: any[];
+}
 
 const tpiExpiry = () => {
+  const dispatch = useDispatch();
   const router = useRouter();
+  const [data, setData] = useState<any[]>([]);
+  const [start, setStart] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const renderItem = ({ item }: { item: (typeof vendorData)[0] }) => (
+  const PAGE_SIZE = 10;
+
+  const resetState = () => {
+    setData([]);
+    setStart(0);
+    setHasMore(true);
+    setIsLoading(false);
+  };
+
+  const fetchData = async () => {
+    console.log("fetchData called");
+
+    if (!hasMore) {
+      console.log("No more data to load (hasMore is false)");
+      return;
+    }
+
+    if (isLoading) {
+      console.log("Currently loading, skipping fetch");
+      return;
+    }
+
+    setIsLoading(true);
+    dispatch(showLoading());
+
+    try {
+      const response = await httpClient.get<TpiExpiryResponse>(
+        API_ENDPOINTS.SAFETY.TPI_EXPIRY
+      );
+
+      const items = response.data?.equipmentCategoryChecklists ?? [];
+      console.log("Items received:", items.length);
+      console.table(items);
+
+      setData(items);
+      setHasMore(false); // Since we're getting all data at once
+    } catch (error) {
+      console.error("Error fetching TPI expiry data:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+      }
+    } finally {
+      setIsLoading(false);
+      dispatch(hideLoading());
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      resetState();
+      fetchData();
+    }, [])
+  );
+
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
-      style={styles.card}
-      onPress={() => router.push("/Safety/tpiDetails")}
+      onPress={() => {
+        router.replace(`/Safety/tpiDetails?id=${item.equipmentId}`);
+      }}
+      activeOpacity={0.85}
     >
-      <View style={styles.content}>
-        <InfoRow label="Reference No" value={item.cwName} />
-        <InfoRow label="Equipment Category" value={item.contact} />
-        <InfoRow label="Equipment Name" value={item.gender} />
-        <InfoRow label="TPI Expiry Date" value={item.bloodGroup} />
-        <InfoRow label="Last Checked On" value={item.vendorDetails} />
-        <InfoRow label="Actions" value={item.department} />
-      </View>
+      <LinearGradient
+        colors={["#fff9cc", "#fff2a8", "#ffec80"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.card}
+      >
+        <View style={styles.content}>
+          <InfoRow label="Reference No" value={item.referenceNO} />
+          <InfoRow label="Equipment Category" value={item.eqpCategory} />
+          <InfoRow label="Equipment Name" value={item.equipmentName} />
+          <InfoRow label="TPI Expiry Date" value={item.tpI_ExpirationDate} />
+          <InfoRow label="Last Checked On" value={item.lastCheckedOn} />
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
-    <FlatList
-      data={vendorData}
-      renderItem={renderItem}
-      keyExtractor={(_, index) => index.toString()}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View style={{ flex: 1 }}>
+      <Loader />
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.equipmentId}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        ListFooterComponent={
+          isLoading ? <ActivityIndicator size="small" color="#000" /> : null
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
   );
 };
 
@@ -119,6 +196,13 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 16,
+  },
+  warningText: {
+    color: "#FF4444",
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 8,
   },
 });
 

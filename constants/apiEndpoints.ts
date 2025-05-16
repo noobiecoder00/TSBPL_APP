@@ -25,9 +25,20 @@ export const API_ENDPOINTS = {
     CREATE: "/api/cwMasterCreate",
     LIST: "/api/CWMasterlist",
     DETAILS: "/api/CW/details",
-    SUBMIT: "/api/CWSubmit",
+    FLOW_ACTION: "/api/CWMasterFlowAction",
+    UPDATE: "/api/CWMasterUpdate",
   },
+
+  // Safety endpoints
+SAFETY: {
+  TPI_EXPIRY: "/api/TPI-data",
+  CHECKLIST: "/api/checklist-data",
+  TPI_DETAILS: "/api/CategoryChecklist/details",
+},
+
+
 } as const;
+
 
 // API Response Types
 export interface ApiResponse<T> {

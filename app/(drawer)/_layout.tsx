@@ -93,6 +93,31 @@ export default function DrawerLayout() {
           />
 
           <Drawer.Screen
+            name="Vendor/CWDetails"
+            options={{
+              drawerLabel: "CW Details",
+              title: "CW Details",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Vendor")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
             name="safety"
             options={{
               drawerLabel: "Safety",

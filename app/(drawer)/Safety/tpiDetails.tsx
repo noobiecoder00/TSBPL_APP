@@ -1,9 +1,18 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
 import { CustomButton } from "@/components/CustomButton";
+import FilePreview from "@/components/FilePreview";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
+import httpClient, { baseURL } from "@/utils/httpClient";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useState } from "react";
+import { Buffer } from "buffer";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,12 +21,66 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
+
+interface UserData {
+  id: string;
+}
+interface FileData {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+interface TpiChecklist {
+  id: number;
+  equipmentMasterId: number;
+  tpiExpiryDate: string;
+  proofDocuments: string;
+  status: string;
+  createdBy: number;
+  updatedBy: number;
+  createdDatetime: string;
+  updatedDatetime: string;
+}
 
 const TpiDetails = () => {
+  const dispatch = useDispatch();
+  const { id } = useLocalSearchParams();
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tpiExpiryDate, setTpiExpiryDate] = useState(new Date());
   const [isChecklistExpanded, setIsChecklistExpanded] = useState(false);
   const [isChecked, setIsChecked] = useState(true);
+  const router = useRouter();
+
+  const [equipmentDetails, setEquipmentDetails] = useState({
+    referenceNo: "",
+    equipmentCategory: "",
+    equipmentName: "",
+    frequency: "",
+    zone: "",
+    location: "",
+    alert: "",
+    proof: "",
+    status: "",
+  });
+
+  const [proofUploaded, setProofUploaded] = useState<FileData[]>([]);
+
+  const [tpiInfoDetails, setTpiInfoDetails] = useState<TpiChecklist[]>([]);
+
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+    onClose?: () => void;
+  }>({
+    visible: false,
+    message: "",
+    type: "info",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
@@ -32,6 +95,118 @@ const TpiDetails = () => {
       setTpiExpiryDate(selectedDate);
     }
   };
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        dispatch(showLoading());
+        await loadUserData();
+        if (userData?.id) {
+          await fetchTpiDetails();
+        }
+      } catch (error) {
+        console.error("Error initializing:", error);
+      } finally {
+        dispatch(hideLoading());
+      }
+    };
+
+    initialize();
+  }, [id]); // Only depend on id changes
+
+  useEffect(() => {
+    if (userData?.id) {
+      fetchTpiDetails();
+    }
+  }, [userData?.id]);
+
+  const fetchTpiDetails = async () => {
+    if (!userData?.id) {
+      console.log("Waiting for user data to be loaded...");
+      return;
+    }
+
+    if (!id) {
+      console.log("No TPI ID provided");
+      return;
+    }
+    try {
+      dispatch(showLoading());
+      const encodedId = id;
+      const encodedUserId = Buffer.from(
+        userData.id.toString(),
+        "utf-8"
+      ).toString("base64");
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SAFETY.TPI_DETAILS}?id=${encodedId}&UserId=${encodedUserId}&tpi=1`
+      );
+      const equipmentDetails = response.data.equipmentMaster;
+      const tpiInfoDetails = response.data.equipmentTPIChecklists;
+      setEquipmentDetails(equipmentDetails);
+      setTpiInfoDetails(tpiInfoDetails);
+
+      if (equipmentDetails.proofUploadDocuments) {
+        const files = equipmentDetails.proofUploadDocuments
+          .split(",")
+          .map((fileName: string) => ({
+            uri: `${baseURL}/uploads/equipmentfiles/${fileName}`,
+            name: fileName,
+            type: fileName.toLowerCase().endsWith(".pdf")
+              ? "application/pdf"
+              : "image/jpeg",
+          }));
+        setProofUploaded(files);
+      }
+
+      console.log(proofUploaded);
+
+      //Set equipment details
+      setEquipmentDetails({
+        referenceNo: equipmentDetails.referenceNo || "",
+        equipmentCategory: equipmentDetails.equipmentCategory.category || "",
+        equipmentName: equipmentDetails.equipmentName || "",
+        frequency: equipmentDetails.frequency || "",
+        zone: equipmentDetails.locationMaster.zoneName || "",
+        location: equipmentDetails.locationMaster.locationName || "",
+        alert: equipmentDetails.alertEmail ? "Yes" : "No",
+        proof: equipmentDetails.proofUpload ? "Yes" : "No",
+        status: equipmentDetails.status || "",
+      });
+
+      //Set tpi info details
+      setTpiInfoDetails(tpiInfoDetails);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const handleViewDocument = async (file: FileData) => {
+    try {
+      const supported = await Linking.canOpenURL(file.uri);
+      if (supported) {
+        await Linking.openURL(file.uri);
+      } else {
+        Alert.alert("Error", "Cannot open this file type");
+      }
+    } catch (error) {
+      console.error("Error opening document:", error);
+      Alert.alert("Error", "Failed to open document");
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       {/* General Information Section */}
@@ -42,7 +217,7 @@ const TpiDetails = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter Reference No"
-            value="EQP-FAR/05-25/00001"
+            value={equipmentDetails.referenceNo}
             editable={false}
           />
         </View>
@@ -52,7 +227,7 @@ const TpiDetails = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter Equipment Category"
-            value="Tools & Tackles"
+            value={equipmentDetails.equipmentCategory}
             editable={false}
           />
         </View>
@@ -62,24 +237,36 @@ const TpiDetails = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter Equipment Name"
-            value="Wire Ropes"
+            value={equipmentDetails.equipmentName}
             editable={false}
           />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Frequency</Text>
-          <TextInput style={styles.input} value="Daily" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.frequency}
+            editable={false}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Zone</Text>
-          <TextInput style={styles.input} value="South" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.zone}
+            editable={false}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Location</Text>
-          <TextInput style={styles.input} value="Faridabad" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.location}
+            editable={false}
+          />
         </View>
       </View>
 
@@ -88,24 +275,40 @@ const TpiDetails = () => {
         <Text style={styles.sectionTitle}>Other Information</Text>
         <View style={styles.formGroup}>
           <Text style={styles.label}>Alert (Email/SMS)</Text>
-          <TextInput style={styles.input} value="Yes" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.alert}
+            editable={false}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Proof</Text>
-          <TextInput style={styles.input} value="Yes" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.proof}
+            editable={false}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Proof Uploaded</Text>
-          <View style={{ marginTop: 2 }}>
-            <CustomButton title="View" onPress={() => {}} variant="primary" />
+          <View style={styles.proofGrid}>
+            {proofUploaded.map((proof, index) => (
+              <View key={index} style={styles.proofItem}>
+                <FilePreview file={proof} />
+              </View>
+            ))}
           </View>
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Status</Text>
-          <TextInput style={styles.input} value="Active" editable={false} />
+          <TextInput
+            style={styles.input}
+            value={equipmentDetails.status}
+            editable={false}
+          />
         </View>
       </View>
 
@@ -126,28 +329,40 @@ const TpiDetails = () => {
             </View>
           </View>
 
-          <View style={styles.tableRow}>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>30-05-2025</Text>
+          {tpiInfoDetails.map((tpi, index) => (
+            <View key={index} style={styles.tableRow}>
+              <View style={styles.tableCell}>
+                <Text style={styles.tableCellText}>
+                  {new Date(tpi.tpiExpiryDate).toLocaleDateString("en-GB")}
+                </Text>
+              </View>
+              <View style={styles.tableCell}>
+                <Text style={styles.tableCellText}>{tpi.status}</Text>
+              </View>
+              <View style={styles.tableCell}>
+                {tpi.proofDocuments && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const files = tpi.proofDocuments
+                        .split(",")
+                        .map((fileName: string) => ({
+                          uri: `${baseURL}/uploads/EquipmentFiles/${fileName}`,
+                          name: fileName,
+                          type: fileName.toLowerCase().endsWith(".pdf")
+                            ? "application/pdf"
+                            : "image/jpeg",
+                        }));
+                      if (files.length > 0) {
+                        handleViewDocument(files[0]);
+                      }
+                    }}
+                  >
+                    <Text style={styles.viewButtonText}>View</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>Inactive</Text>
-            </View>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>View</Text>
-            </View>
-          </View>
-          <View style={styles.tableRow}>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>31-05-2025</Text>
-            </View>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>Active</Text>
-            </View>
-            <View style={styles.tableCell}>
-              <Text style={styles.tableCellText}>View</Text>
-            </View>
-          </View>
+          ))}
         </View>
       </View>
 
@@ -441,9 +656,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   viewButtonText: {
-    color: COLORS.background,
-    fontSize: SIZES.medium,
-    fontWeight: "500",
+    color: COLORS.primary,
+    textDecorationLine: "underline",
   },
   checkboxContainer: {
     flexDirection: "row",
@@ -466,5 +680,15 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: SIZES.medium,
     color: COLORS.text,
+  },
+  proofGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  proofItem: {
+    width: "30%",
+    aspectRatio: 1,
   },
 });

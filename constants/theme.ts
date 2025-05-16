@@ -6,6 +6,9 @@ export const COLORS = {
   error: "#FF3B30",
   success: "#34C759",
   gray: "#a2a2a3",
+  lightGray: "#d3d3d3",
+  veryLightGray: "#e5e5e5",
+  white: "#FFFFFF",
 };
 
 export const FONTS = {

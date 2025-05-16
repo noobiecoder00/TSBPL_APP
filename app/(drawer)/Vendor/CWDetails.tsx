@@ -1,21 +1,23 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
 import { CustomAlert } from "@/components/CustomAlert";
 import { CustomButton } from "@/components/CustomButton";
+import FilePreview from "@/components/FilePreview";
 import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
-import httpClient from "@/utils/httpClient";
+import httpClient, { baseURL } from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -24,7 +26,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { RadioButton } from "react-native-paper";
 import { useDispatch } from "react-redux";
+import CWForm from "./CWForm";
 
 interface UserData {
   id: string;
@@ -58,6 +62,8 @@ export default function CWDetails() {
   const { id } = useLocalSearchParams();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [cWDetails, setCWDetails] = useState<any>(null);
+  const [cwMasterFlow, setCwMasterFlow] = useState<any[]>([]);
+  const [cwFlowId, setCwFlowId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -75,13 +81,31 @@ export default function CWDetails() {
     esicNumber: "",
     uanNumber: "",
   });
+
+  const [isSee, setIsSee] = useState(false);
+  const [actionFormData, setActionFormData] = useState({
+    actionTaken: "",
+    remarks: "",
+    observedBy: "",
+    escalationDate: "",
+  });
+
+  const [level, setLevel] = useState<number | null>(null);
+  const [pendingUserName, setPendingUserName] = useState<string | null>(null);
+  const [pendingUserRoleName, setPendingUserRoleName] = useState<string | null>(
+    null
+  );
+  const [autoSlgTargetDate, setAutoSlgTargetDate] = useState<string | null>(
+    null
+  );
+  const [tabUserName, setTabUserName] = useState<string | null>(null);
+  const [tabUserRoleName, setTabUserRoleName] = useState<string | null>(null);
   const [dob, setDob] = useState(new Date());
   const [doj, setDoj] = useState(new Date());
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [showDojPicker, setShowDojPicker] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(
@@ -91,6 +115,7 @@ export default function CWDetails() {
     visible: boolean;
     message: string;
     type: "success" | "error" | "info";
+    onClose?: () => void;
   }>({
     visible: false,
     message: "",
@@ -127,12 +152,88 @@ export default function CWDetails() {
     useState<FileData | null>(null);
   const [selectedFirstAidTraining, setSelectedFirstAidTraining] =
     useState<FileData | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<FileData | null>(
+    null
+  );
+
+  const router = useRouter();
 
   useEffect(() => {
-    fetchVendors();
-    loadUserData();
-    fetchCWDetails();
-  }, []);
+    const initialize = async () => {
+      try {
+        dispatch(showLoading());
+        resetStates();
+        await fetchVendors();
+        await loadUserData();
+        if (userData?.id) {
+          await fetchCWDetails();
+        }
+      } catch (error) {
+        console.error("Error initializing:", error);
+      } finally {
+        dispatch(hideLoading());
+      }
+    };
+
+    initialize();
+  }, [id]); // Only depend on id changes
+
+  // Separate useEffect for fetchCWDetails when userData changes
+  useEffect(() => {
+    if (userData?.id) {
+      fetchCWDetails();
+    }
+  }, [userData?.id]);
+
+  const resetStates = () => {
+    setCWDetails(null);
+    setCwMasterFlow([]);
+    setCwFlowId(null);
+    setFormData({
+      name: "",
+      address: "",
+      mobileNumber: "",
+      spouseContactNumber: "",
+      aadhaarNumber: "",
+      education: "",
+      department: "",
+      jobDesignation: "",
+      skillType: "",
+      experience: "",
+      bankName: "",
+      bankAccountNumber: "",
+      epfNumber: "",
+      esicNumber: "",
+      uanNumber: "",
+    });
+    setIsSee(false);
+    setActionFormData({
+      actionTaken: "",
+      remarks: "",
+      observedBy: "",
+      escalationDate: "",
+    });
+    setLevel(null);
+    setPendingUserName(null);
+    setPendingUserRoleName(null);
+    setAutoSlgTargetDate(null);
+    setTabUserName(null);
+    setTabUserRoleName(null);
+    setDob(new Date());
+    setDoj(new Date());
+    setSelectedVendor(null);
+    setError(null);
+    setSelectedGender(null);
+    setSelectedBloodGroup(null);
+    setSelectedPhoto(null);
+    setSelectedIdProof(null);
+    setSelectedMedicalExamination(null);
+    setSelectedPoliceVerification(null);
+    setSelectedSafetyInduction(null);
+    setSelectedWahCertified(null);
+    setSelectedFirstAidTraining(null);
+    setSelectedDocument(null);
+  };
 
   const fetchVendors = async () => {
     try {
@@ -149,12 +250,23 @@ export default function CWDetails() {
   };
 
   const fetchCWDetails = async () => {
+    if (!userData?.id) {
+      console.log("Waiting for user data to be loaded...");
+      return;
+    }
+
+    if (!id) {
+      console.log("No CW ID provided");
+      return;
+    }
+
     dispatch(showLoading());
     try {
       const encodedId = id;
-      const encodedUserId = userData?.id
-        ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
-        : Buffer.from("0", "utf-8").toString("base64");
+      const encodedUserId = Buffer.from(
+        userData.id.toString(),
+        "utf-8"
+      ).toString("base64");
       console.log(
         `${API_ENDPOINTS.CW.DETAILS}?id=${encodedId}&UserId=${encodedUserId}`
       );
@@ -164,7 +276,43 @@ export default function CWDetails() {
 
       if (response.data?.success) {
         const cwData = response.data.data.cwMaster;
+        if (!cwData) {
+          console.warn("No CW data received from API");
+          return;
+        }
         setCWDetails(response.data.data);
+        setCwMasterFlow(response.data.data.cwMasterFlow || []);
+        setCwFlowId(response.data.data.cwMasterFlowLatest?.id);
+        console.log("CW Flow ID:", response.data.data.cwMasterFlowLatest?.id);
+
+        if (response.data.data.isSee === true) {
+          setIsSee(true);
+          setLevel(response.data.data.cwMasterFlowLatest?.level);
+          setTabUserName(response.data.data.tabUserName);
+          setTabUserRoleName(response.data.data.tabUserRoleName);
+
+          // Format and set the autoSlgTargetDate
+          if (response.data.data.autoSlgTargetDate) {
+            const date = new Date(response.data.data.autoSlgTargetDate);
+            const formattedDate = date.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+            setAutoSlgTargetDate(formattedDate);
+          }
+
+          // Set action form data with initial values
+          setActionFormData((prev) => ({
+            ...prev,
+            observedBy: response.data.data.tabUserName || "",
+            escalationDate: response.data.data.autoSlgTargetDate
+              ? new Date(
+                  response.data.data.autoSlgTargetDate
+                ).toLocaleDateString("en-GB")
+              : "",
+          }));
+        }
 
         // Set form data
         setFormData({
@@ -200,7 +348,7 @@ export default function CWDetails() {
         // Set file previews
         if (cwData.profilePhoto) {
           setSelectedPhoto({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.profilePhoto}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.profilePhoto}`,
             name: cwData.profilePhoto,
             type: "image/jpeg",
           });
@@ -208,7 +356,7 @@ export default function CWDetails() {
 
         if (cwData.idProofDetail) {
           setSelectedIdProof({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.idProofDetail}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.idProofDetail}`,
             name: cwData.idProofDetail,
             type: "application/pdf",
           });
@@ -216,7 +364,7 @@ export default function CWDetails() {
 
         if (cwData.medicalExaminationCertification) {
           setSelectedMedicalExamination({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.medicalExaminationCertification}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.medicalExaminationCertification}`,
             name: cwData.medicalExaminationCertification,
             type: "application/pdf",
           });
@@ -224,7 +372,7 @@ export default function CWDetails() {
 
         if (cwData.policyVerificationReport) {
           setSelectedPoliceVerification({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.policyVerificationReport}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.policyVerificationReport}`,
             name: cwData.policyVerificationReport,
             type: "image/jpeg",
           });
@@ -232,7 +380,7 @@ export default function CWDetails() {
 
         if (cwData.safetyInduction) {
           setSelectedSafetyInduction({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.safetyInduction}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.safetyInduction}`,
             name: cwData.safetyInduction,
             type: "application/pdf",
           });
@@ -240,7 +388,7 @@ export default function CWDetails() {
 
         if (cwData.wahCertified) {
           setSelectedWahCertified({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.wahCertified}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.wahCertified}`,
             name: cwData.wahCertified,
             type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           });
@@ -248,16 +396,26 @@ export default function CWDetails() {
 
         if (cwData.firstAidTraining) {
           setSelectedFirstAidTraining({
-            uri: `http://tbspl.aiplapps.com/uploads/cwfiles/${cwData.firstAidTraining}`,
+            uri: `${baseURL}/uploads/cwfiles/${cwData.firstAidTraining}`,
             name: cwData.firstAidTraining,
             type: "image/jpeg",
           });
         }
       } else {
-        console.warn("CW details not found.");
+        console.warn(
+          "CW details not found or API returned unsuccessful response"
+        );
       }
     } catch (error) {
       console.error("Error fetching CW details:", error);
+      setAlert({
+        visible: true,
+        message: "Failed to fetch CW details. Please try again.",
+        type: "error",
+        onClose: () => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        },
+      });
     } finally {
       dispatch(hideLoading());
     }
@@ -279,6 +437,18 @@ export default function CWDetails() {
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear().toString().slice(-2);
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 || 12;
+    return `${day}-${month}-${year} ${formattedHours}:${minutes} ${ampm}`;
   };
 
   const formatDateToSend = (date: Date) => {
@@ -346,109 +516,33 @@ export default function CWDetails() {
     }
   };
 
-  const renderFilePreview = (file: FileData | null) => {
-    if (!file) return null;
-
-    if (file.type.startsWith("image/")) {
-      return (
-        <Image
-          source={{ uri: file.uri }}
-          style={styles.previewImage}
-          resizeMode="cover"
-        />
-      );
+  const handleViewDocument = async (file: FileData) => {
+    try {
+      const supported = await Linking.canOpenURL(file.uri);
+      if (supported) {
+        await Linking.openURL(file.uri);
+      } else {
+        Alert.alert("Error", "Cannot open this file type");
+      }
+    } catch (error) {
+      console.error("Error opening document:", error);
+      Alert.alert("Error", "Failed to open document");
     }
-
-    return (
-      <View style={styles.filePreview}>
-        <Text style={styles.fileName}>{file.name}</Text>
-      </View>
-    );
   };
 
   const validateForm = () => {
     const requiredFields = [
-      { field: "name", label: "Contract Worker Name" },
-      { field: "address", label: "Address" },
-      { field: "mobileNumber", label: "Mobile Number" },
-      { field: "spouseContactNumber", label: "Spouse/Parent Contact Number" },
-      { field: "aadhaarNumber", label: "Aadhaar Number" },
-      { field: "education", label: "Education" },
-      { field: "department", label: "Department" },
-      { field: "jobDesignation", label: "Job Designation" },
-      { field: "skillType", label: "Skill Type" },
-      { field: "experience", label: "Experience" },
-      { field: "bankName", label: "Bank Name" },
-      { field: "bankAccountNumber", label: "Bank Account Number" },
-      { field: "epfNumber", label: "EPF Number" },
-      { field: "esicNumber", label: "ESIC Number" },
-      { field: "uanNumber", label: "UAN Number" },
+      { field: "actionTaken", label: "Action Taken" },
+      { field: "remarks", label: "Remarks" },
+      { field: "observedBy", label: "Observed By" },
+      { field: "escalationDate", label: "Escalation Date" },
     ];
 
-    // Validate text fields
     for (const { field, label } of requiredFields) {
-      if (!formData[field as keyof typeof formData]) {
+      if (!actionFormData[field as keyof typeof actionFormData]) {
         Alert.alert("Validation Error", `${label} is required`);
         return false;
       }
-    }
-
-    // Validate selection fields
-    if (!selectedGender) {
-      Alert.alert("Validation Error", "Gender is required");
-      return false;
-    }
-
-    if (!selectedBloodGroup) {
-      Alert.alert("Validation Error", "Blood Group is required");
-      return false;
-    }
-
-    if (!selectedVendor) {
-      Alert.alert("Validation Error", "Vendor is required");
-      return false;
-    }
-
-    // Validate file uploads
-    if (!selectedPhoto) {
-      Alert.alert("Validation Error", "Profile Photo is required");
-      return false;
-    }
-
-    if (!selectedIdProof) {
-      Alert.alert("Validation Error", "ID Proof is required");
-      return false;
-    }
-
-    if (!selectedMedicalExamination) {
-      Alert.alert(
-        "Validation Error",
-        "Medical Examination document is required"
-      );
-      return false;
-    }
-
-    if (!selectedPoliceVerification) {
-      Alert.alert("Validation Error", "Police Verification Report is required");
-      return false;
-    }
-
-    if (!selectedSafetyInduction) {
-      Alert.alert("Validation Error", "Safety Induction document is required");
-      return false;
-    }
-
-    if (!selectedWahCertified) {
-      Alert.alert("Validation Error", "WAH Certification document is required");
-      return false;
-    }
-
-    if (!selectedFirstAidTraining) {
-      Alert.alert(
-        "Validation Error",
-        "First-Aid Training document is required"
-      );
-      return false;
     }
 
     return true;
@@ -464,18 +558,110 @@ export default function CWDetails() {
       dispatch(showLoading());
       setError(null);
 
+      const formDataToSend = new FormData();
+
+      // Add required fields
+      formDataToSend.append(
+        "Id",
+        cWDetails?.cwMasterFlowLatest?.id?.toString() || ""
+      );
+      formDataToSend.append("Status_to", actionFormData.actionTaken);
+      formDataToSend.append("ActionTaken", actionFormData.remarks);
+      formDataToSend.append("AutoSLgTargetDate", autoSlgTargetDate || "");
+
+      // Add document if selected
+      if (selectedDocument) {
+        formDataToSend.append("Document", {
+          uri: selectedDocument.uri,
+          name: selectedDocument.name,
+          type: selectedDocument.type,
+        } as any);
+      }
+
+      // Add encrypted user ID
+      if (userData?.id) {
+        const encodedUserId = Buffer.from(
+          userData.id.toString(),
+          "utf-8"
+        ).toString("base64");
+        formDataToSend.append("UpdatedBy", encodedUserId);
+      }
+
+      console.log("Submitting form data:", {
+        Id: cWDetails?.cwMasterFlowLatest?.id,
+        Status_to: actionFormData.actionTaken,
+        ActionTaken: actionFormData.remarks,
+        AutoSLgTargetDate: autoSlgTargetDate,
+        UpdatedBy: userData?.id
+          ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
+          : null,
+        Document: selectedDocument ? "File attached" : "No file",
+      });
+
+      const response = await httpClient.post<CWSubmitResponse>(
+        API_ENDPOINTS.CW.FLOW_ACTION,
+        formDataToSend,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "success",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+            router.replace("/Vendor");
+          },
+        });
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit action",
+          type: "error",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error("Error submitting action:", error);
+      setAlert({
+        visible: true,
+        message: error.response?.data?.message || "Failed to submit action",
+        type: "error",
+        onClose: () => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        },
+      });
+    } finally {
+      setIsSubmitting(false);
+      dispatch(hideLoading());
+    }
+  };
+
+  const handleUpdate = async (formData: any) => {
+    try {
+      setIsSubmitting(true);
+      dispatch(showLoading());
+      setError(null);
+
       const formDataToSend = {
         CWName: formData.name,
-        DateOfBirth: formatDateToSend(dob),
-        DateOfJoining: formatDateToSend(doj),
-        Gender: selectedGender,
-        BloodGroup: selectedBloodGroup,
+        DateOfBirth: formatDateToSend(formData.dob),
+        DateOfJoining: formatDateToSend(formData.doj),
+        Gender: formData.gender,
+        BloodGroup: formData.bloodGroup,
         Address: formData.address,
         MobileNumber: formData.mobileNumber,
         RelativeContactNo: formData.spouseContactNumber,
         AadhaarNo: formData.aadhaarNumber,
         Education: formData.education,
-        VendorId: selectedVendor,
+        VendorId: formData.vendorId,
         Department: formData.department,
         JobDescription: formData.jobDesignation,
         SkillType: formData.skillType,
@@ -485,10 +671,15 @@ export default function CWDetails() {
         EPXNo: formData.epfNumber,
         ESICNo: formData.esicNumber,
         UANNo: formData.uanNumber,
-        CreatedBy: userData?.id
+        CWFlowId: formData.CWFlowId || formData.flowId || cwFlowId,
+        CWFlowRemarks: formData.remarks,
+        id: formData.id,
+        UpdatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
       };
+
+      console.log("Sending update data:", formDataToSend);
 
       // Create FormData for multipart/form-data
       const multipartFormData = new FormData();
@@ -501,29 +692,29 @@ export default function CWDetails() {
       });
 
       // Add files
-      if (selectedPhoto) {
-        const photoFile: FormDataFile = {
-          uri: selectedPhoto.uri,
-          name: selectedPhoto.name,
-          type: selectedPhoto.type,
+      if (formData.photo) {
+        const photoFile = {
+          uri: formData.photo.uri,
+          name: formData.photo.name,
+          type: formData.photo.type,
         };
         multipartFormData.append("ProfilePhoto", photoFile as any);
       }
 
-      if (selectedIdProof) {
-        const idProofFile: FormDataFile = {
-          uri: selectedIdProof.uri,
-          name: selectedIdProof.name,
-          type: selectedIdProof.type,
+      if (formData.idProof) {
+        const idProofFile = {
+          uri: formData.idProof.uri,
+          name: formData.idProof.name,
+          type: formData.idProof.type,
         };
         multipartFormData.append("IdProofDetail", idProofFile as any);
       }
 
-      if (selectedMedicalExamination) {
-        const medicalFile: FormDataFile = {
-          uri: selectedMedicalExamination.uri,
-          name: selectedMedicalExamination.name,
-          type: selectedMedicalExamination.type,
+      if (formData.medicalExamination) {
+        const medicalFile = {
+          uri: formData.medicalExamination.uri,
+          name: formData.medicalExamination.name,
+          type: formData.medicalExamination.type,
         };
         multipartFormData.append(
           "MedicalExaminationCertification",
@@ -531,46 +722,65 @@ export default function CWDetails() {
         );
       }
 
-      if (selectedPoliceVerification) {
-        const policeFile: FormDataFile = {
-          uri: selectedPoliceVerification.uri,
-          name: selectedPoliceVerification.name,
-          type: selectedPoliceVerification.type,
+      if (formData.policeVerification) {
+        const policeFile = {
+          uri: formData.policeVerification.uri,
+          name: formData.policeVerification.name,
+          type: formData.policeVerification.type,
         };
         multipartFormData.append("PolicyVerificationReport", policeFile as any);
       }
 
-      if (selectedSafetyInduction) {
-        const safetyFile: FormDataFile = {
-          uri: selectedSafetyInduction.uri,
-          name: selectedSafetyInduction.name,
-          type: selectedSafetyInduction.type,
+      if (formData.safetyInduction) {
+        const safetyFile = {
+          uri: formData.safetyInduction.uri,
+          name: formData.safetyInduction.name,
+          type: formData.safetyInduction.type,
         };
         multipartFormData.append("SafetyInduction", safetyFile as any);
       }
 
-      if (selectedWahCertified) {
-        const wahFile: FormDataFile = {
-          uri: selectedWahCertified.uri,
-          name: selectedWahCertified.name,
-          type: selectedWahCertified.type,
+      if (formData.wahCertified) {
+        const wahFile = {
+          uri: formData.wahCertified.uri,
+          name: formData.wahCertified.name,
+          type: formData.wahCertified.type,
         };
         multipartFormData.append("WAHCertified", wahFile as any);
       }
 
-      if (selectedFirstAidTraining) {
-        const firstAidFile: FormDataFile = {
-          uri: selectedFirstAidTraining.uri,
-          name: selectedFirstAidTraining.name,
-          type: selectedFirstAidTraining.type,
+      if (formData.firstAidTraining) {
+        const firstAidFile = {
+          uri: formData.firstAidTraining.uri,
+          name: formData.firstAidTraining.name,
+          type: formData.firstAidTraining.type,
         };
         multipartFormData.append("FirstAidTraining", firstAidFile as any);
       }
 
-      // console.log("Plain JSON data:", formDataToSend);
+      console.log("Submitting update data:", {
+        ...formDataToSend,
+        files: {
+          photo: formData.photo ? "File attached" : "No file",
+          idProof: formData.idProof ? "File attached" : "No file",
+          medicalExamination: formData.medicalExamination
+            ? "File attached"
+            : "No file",
+          policeVerification: formData.policeVerification
+            ? "File attached"
+            : "No file",
+          safetyInduction: formData.safetyInduction
+            ? "File attached"
+            : "No file",
+          wahCertified: formData.wahCertified ? "File attached" : "No file",
+          firstAidTraining: formData.firstAidTraining
+            ? "File attached"
+            : "No file",
+        },
+      });
 
       const response = await httpClient.post<CWSubmitResponse>(
-        API_ENDPOINTS.CW.CREATE,
+        API_ENDPOINTS.CW.UPDATE,
         multipartFormData,
         {
           headers: {
@@ -583,60 +793,37 @@ export default function CWDetails() {
         setAlert({
           visible: true,
           message: response.data.message,
-          type: response.data.success ? "success" : "error",
+          type: "success",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+            router.replace("/Vendor");
+          },
         });
-        resetForm();
       } else {
         setAlert({
           visible: true,
-          message: response.data.message || "Failed to create contract worker",
+          message: response.data.message || "Failed to update contract worker",
           type: "error",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
         });
       }
     } catch (error: any) {
-      console.error("Error creating contract worker:", error);
+      console.error("Error updating contract worker:", error);
       setAlert({
         visible: true,
         message:
-          error.response?.data?.message || "Failed to create contract worker",
+          error.response?.data?.message || "Failed to update contract worker",
         type: "error",
+        onClose: () => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        },
       });
     } finally {
       setIsSubmitting(false);
       dispatch(hideLoading());
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      address: "",
-      mobileNumber: "",
-      spouseContactNumber: "",
-      aadhaarNumber: "",
-      education: "",
-      department: "",
-      jobDesignation: "",
-      skillType: "",
-      experience: "",
-      bankName: "",
-      bankAccountNumber: "",
-      epfNumber: "",
-      esicNumber: "",
-      uanNumber: "",
-    });
-    setDob(new Date());
-    setDoj(new Date());
-    setSelectedGender(null);
-    setSelectedBloodGroup(null);
-    setSelectedVendor(null);
-    setSelectedPhoto(null);
-    setSelectedIdProof(null);
-    setSelectedMedicalExamination(null);
-    setSelectedPoliceVerification(null);
-    setSelectedSafetyInduction(null);
-    setSelectedWahCertified(null);
-    setSelectedFirstAidTraining(null);
   };
 
   return (
@@ -651,7 +838,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Contract Worker Name"
               value={formData.name}
-              onChangeText={(value) => handleInputChange("name", value)}
+              editable={false}
             />
           </View>
 
@@ -696,7 +883,7 @@ export default function CWDetails() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedGender}
-                onValueChange={(itemValue) => setSelectedGender(itemValue)}
+                enabled={false}
                 style={styles.picker}
               >
                 <Picker.Item label="Select Gender" value={null} />
@@ -716,7 +903,7 @@ export default function CWDetails() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedBloodGroup}
-                onValueChange={(itemValue) => setSelectedBloodGroup(itemValue)}
+                enabled={false}
                 style={styles.picker}
               >
                 <Picker.Item label="Select Blood Group" value={null} />
@@ -739,7 +926,7 @@ export default function CWDetails() {
               multiline
               numberOfLines={3}
               value={formData.address}
-              onChangeText={(value) => handleInputChange("address", value)}
+              editable={false}
             />
           </View>
 
@@ -750,7 +937,7 @@ export default function CWDetails() {
               placeholder="Enter Mobile Number"
               keyboardType="numeric"
               value={formData.mobileNumber}
-              onChangeText={(value) => handleInputChange("mobileNumber", value)}
+              editable={false}
             />
           </View>
 
@@ -761,9 +948,7 @@ export default function CWDetails() {
               placeholder="Enter Contact Number"
               keyboardType="numeric"
               value={formData.spouseContactNumber}
-              onChangeText={(value) =>
-                handleInputChange("spouseContactNumber", value)
-              }
+              editable={false}
             />
           </View>
 
@@ -774,9 +959,7 @@ export default function CWDetails() {
               placeholder="Enter Aadhaar Number"
               keyboardType="numeric"
               value={formData.aadhaarNumber}
-              onChangeText={(value) =>
-                handleInputChange("aadhaarNumber", value)
-              }
+              editable={false}
             />
           </View>
         </View>
@@ -790,7 +973,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Education"
               value={formData.education}
-              onChangeText={(value) => handleInputChange("education", value)}
+              editable={false}
             />
           </View>
 
@@ -799,9 +982,8 @@ export default function CWDetails() {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedVendor}
-                onValueChange={(itemValue) => setSelectedVendor(itemValue)}
+                enabled={false}
                 style={styles.picker}
-                enabled={!isLoading}
               >
                 <Picker.Item label="Select Vendor" value={null} />
                 {vendors.map((vendor) => (
@@ -821,7 +1003,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Department"
               value={formData.department}
-              onChangeText={(value) => handleInputChange("department", value)}
+              editable={false}
             />
           </View>
 
@@ -831,9 +1013,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Designation"
               value={formData.jobDesignation}
-              onChangeText={(value) =>
-                handleInputChange("jobDesignation", value)
-              }
+              editable={false}
             />
           </View>
 
@@ -843,7 +1023,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Skill Type"
               value={formData.skillType}
-              onChangeText={(value) => handleInputChange("skillType", value)}
+              editable={false}
             />
           </View>
 
@@ -853,7 +1033,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Experience"
               value={formData.experience}
-              onChangeText={(value) => handleInputChange("experience", value)}
+              editable={false}
             />
           </View>
         </View>
@@ -867,7 +1047,7 @@ export default function CWDetails() {
               style={styles.input}
               placeholder="Enter Bank Name"
               value={formData.bankName}
-              onChangeText={(value) => handleInputChange("bankName", value)}
+              editable={false}
             />
           </View>
 
@@ -878,9 +1058,7 @@ export default function CWDetails() {
               placeholder="Enter Bank Account Number"
               keyboardType="numeric"
               value={formData.bankAccountNumber}
-              onChangeText={(value) =>
-                handleInputChange("bankAccountNumber", value)
-              }
+              editable={false}
             />
           </View>
         </View>
@@ -895,7 +1073,7 @@ export default function CWDetails() {
               placeholder="Enter EPF Number"
               keyboardType="numeric"
               value={formData.epfNumber}
-              onChangeText={(value) => handleInputChange("epfNumber", value)}
+              editable={false}
             />
           </View>
 
@@ -906,7 +1084,7 @@ export default function CWDetails() {
               placeholder="Enter ESIC Number"
               keyboardType="numeric"
               value={formData.esicNumber}
-              onChangeText={(value) => handleInputChange("esicNumber", value)}
+              editable={false}
             />
           </View>
 
@@ -917,7 +1095,7 @@ export default function CWDetails() {
               placeholder="Enter UAN Number"
               keyboardType="numeric"
               value={formData.uanNumber}
-              onChangeText={(value) => handleInputChange("uanNumber", value)}
+              editable={false}
             />
           </View>
         </View>
@@ -927,45 +1105,36 @@ export default function CWDetails() {
           <Text style={styles.sectionTitle}>Document Uploads</Text>
           <View style={styles.formGroup}>
             <Text style={styles.label}>CW Profile Photo *</Text>
-            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-              <Text style={styles.uploadButtonText}>Choose Photo</Text>
-            </TouchableOpacity>
-            {selectedPhoto && renderFilePreview(selectedPhoto)}
+            {selectedPhoto && (
+              <TouchableOpacity
+                onPress={() => handleViewDocument(selectedPhoto)}
+              >
+                <Image
+                  source={{ uri: selectedPhoto.uri }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>ID Proof Detail *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedIdProof)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedIdProof && renderFilePreview(selectedIdProof)}
+            {selectedIdProof && <FilePreview file={selectedIdProof} />}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Medical Examination *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedMedicalExamination)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedMedicalExamination &&
-              renderFilePreview(selectedMedicalExamination)}
+            {selectedMedicalExamination && (
+              <FilePreview file={selectedMedicalExamination} />
+            )}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Police Verification Report *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedPoliceVerification)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedPoliceVerification &&
-              renderFilePreview(selectedPoliceVerification)}
+            {selectedPoliceVerification && (
+              <FilePreview file={selectedPoliceVerification} />
+            )}
           </View>
         </View>
 
@@ -974,56 +1143,285 @@ export default function CWDetails() {
           <Text style={styles.sectionTitle}>Certifications</Text>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Safety Induction *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedSafetyInduction)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedSafetyInduction &&
-              renderFilePreview(selectedSafetyInduction)}
+            {selectedSafetyInduction && (
+              <FilePreview file={selectedSafetyInduction} />
+            )}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>WAH Certified *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedWahCertified)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedWahCertified && renderFilePreview(selectedWahCertified)}
+            {selectedWahCertified && (
+              <FilePreview file={selectedWahCertified} />
+            )}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>First-Aid Training *</Text>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => pickDocument(setSelectedFirstAidTraining)}
-            >
-              <Text style={styles.uploadButtonText}>Choose File</Text>
-            </TouchableOpacity>
-            {selectedFirstAidTraining &&
-              renderFilePreview(selectedFirstAidTraining)}
+            {selectedFirstAidTraining && (
+              <FilePreview file={selectedFirstAidTraining} />
+            )}
           </View>
         </View>
 
-        {/* Submit Buttons */}
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonWrapper}>
-            <CustomButton
-              title="Submit"
-              onPress={() => handleSubmit()}
-              variant="primary"
-              disabled={isSubmitting}
+        {/* Action Taken Remarks Section */}
+        {cwMasterFlow && cwMasterFlow.length > 0 && (
+          <>
+            {cwMasterFlow.map((flow: any, index: number) => (
+              <View key={flow.id}>
+                <TouchableOpacity style={styles.pendingHeader}>
+                  <Text style={styles.pendingText}>
+                    {flow.userMaster.name} ({flow.roleMaster.roleName}) Remarks
+                  </Text>
+                </TouchableOpacity>
+
+                {flow.updatedBy === 0 && (
+                  <Text style={styles.pendingText}>
+                    Auto Forwarded By System
+                  </Text>
+                )}
+
+                {flow.level !== 0 && (
+                  <>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Action Taken</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={
+                          flow.status_to === "approve"
+                            ? "Approved"
+                            : flow.status_to === "reject"
+                            ? "Rejected"
+                            : flow.status_to === "return"
+                            ? "Returned"
+                            : "Re-evaluated"
+                        }
+                        editable={false}
+                      />
+                    </View>
+                  </>
+                )}
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Remarks</Text>
+                  <TextInput
+                    style={[styles.input, styles.multilineInput]}
+                    value={flow.actionTaken}
+                    editable={false}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Action Taken Date Time</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formatDateTime(flow.actionTakenDatetime)}
+                    editable={false}
+                  />
+                </View>
+
+                {flow.document && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Uploaded Document</Text>
+                    <FilePreview
+                      file={{
+                        uri: `${baseURL}/uploads/CWFlowActionfiles/${flow.document}`,
+                        name: flow.document,
+                        type: "application/pdf",
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* do below section only if isSee is true and keep in different return block */}
+        {isSee && level !== 0 && (
+          <>
+            {/* Pending With */}
+            <TouchableOpacity activeOpacity={0.8} style={styles.pendingHeader}>
+              <Text style={styles.pendingText}>
+                Pending with {tabUserName || "Unknown User"} (
+                {tabUserRoleName || "Unknown Role"})
+              </Text>
+            </TouchableOpacity>
+
+            {/* Action Taken */}
+            <Text style={styles.label}>Action Taken</Text>
+            <View style={styles.radioGroup}>
+              <View style={styles.radioRow}>
+                <RadioButton
+                  value="approve"
+                  status={
+                    actionFormData.actionTaken === "approve"
+                      ? "checked"
+                      : "unchecked"
+                  }
+                  onPress={() =>
+                    setActionFormData({
+                      ...actionFormData,
+                      actionTaken: "approve",
+                    })
+                  }
+                />
+                <Text style={styles.radioLabel}>Approve</Text>
+              </View>
+
+              {level === 1 && (
+                <>
+                  <View style={styles.radioRow}>
+                    <RadioButton
+                      value="reject"
+                      status={
+                        actionFormData.actionTaken === "reject"
+                          ? "checked"
+                          : "unchecked"
+                      }
+                      onPress={() =>
+                        setActionFormData({
+                          ...actionFormData,
+                          actionTaken: "reject",
+                        })
+                      }
+                    />
+                    <Text style={styles.radioLabel}>Reject</Text>
+                  </View>
+                  <View style={styles.radioRow}>
+                    <RadioButton
+                      value="reevaluate"
+                      status={
+                        actionFormData.actionTaken === "reevaluate"
+                          ? "checked"
+                          : "unchecked"
+                      }
+                      onPress={() =>
+                        setActionFormData({
+                          ...actionFormData,
+                          actionTaken: "reevaluate",
+                        })
+                      }
+                    />
+                    <Text style={styles.radioLabel}>Re-evaluate</Text>
+                  </View>
+                </>
+              )}
+
+              {level && level > 1 && (
+                <View style={styles.radioRow}>
+                  <RadioButton
+                    value="return"
+                    status={
+                      actionFormData.actionTaken === "return"
+                        ? "checked"
+                        : "unchecked"
+                    }
+                    onPress={() =>
+                      setActionFormData({
+                        ...actionFormData,
+                        actionTaken: "return",
+                      })
+                    }
+                  />
+                  <Text style={styles.radioLabel}>Return</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Remarks */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Remarks</Text>
+              <TextInput
+                style={[styles.input, styles.multilineInput]}
+                value={actionFormData.remarks}
+                onChangeText={(text) =>
+                  setActionFormData({ ...actionFormData, remarks: text })
+                }
+                placeholder="Type Action Taken Details..."
+                numberOfLines={3}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Upload Document</Text>
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={() => pickDocument(setSelectedDocument)}
+              >
+                <Text style={styles.uploadButtonText}>Choose File</Text>
+              </TouchableOpacity>
+              {selectedDocument && <FilePreview file={selectedDocument} />}
+            </View>
+
+            {/* Observed By */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Observed By</Text>
+              <TextInput
+                value={tabUserName || ""}
+                editable={false}
+                style={styles.input}
+              />
+            </View>
+
+            {/* Escalation Date */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Escalation Date</Text>
+              <TextInput
+                value={autoSlgTargetDate || ""}
+                editable={false}
+                style={styles.input}
+              />
+            </View>
+
+            {/* Submit */}
+            <View style={styles.buttonContainer}>
+              <View style={styles.buttonWrapper}>
+                <CustomButton
+                  title="Submit"
+                  onPress={() => handleSubmit()}
+                  variant="primary"
+                  disabled={isSubmitting}
+                />
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* When level is equal to 0 */}
+        {isSee && level === 0 && (
+          <>
+            {/* Pending With */}
+            <TouchableOpacity activeOpacity={0.8} style={styles.pendingHeader}>
+              <Text style={styles.pendingText}>
+                Pending with {tabUserName || "Unknown User"} (
+                {tabUserRoleName || "Unknown Role"})
+              </Text>
+            </TouchableOpacity>
+            {(() => {
+              console.log("Passing cwFlowId to CWForm:", cwFlowId);
+              return null;
+            })()}
+            <CWForm
+              id={cWDetails?.cwMaster.id}
+              cwFlowId={cwFlowId ? cwFlowId : 0}
+              initialData={cWDetails?.cwMaster}
+              onSubmit={handleUpdate}
+              isSubmitting={isSubmitting}
+              vendors={vendors}
             />
-          </View>
-        </View>
+          </>
+        )}
+
         <CustomAlert
           visible={alert.visible}
           message={alert.message}
           type={alert.type}
-          onClose={() => setAlert((prev) => ({ ...prev, visible: false }))}
+          onClose={
+            alert.onClose ||
+            (() => setAlert((prev) => ({ ...prev, visible: false })))
+          }
         />
       </ScrollView>
       <Loader />
@@ -1067,6 +1465,31 @@ const styles = StyleSheet.create({
     fontSize: SIZES.small,
     color: COLORS.text,
     marginBottom: SIZES.small / 2,
+  },
+  pendingHeader: {
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  pendingText: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: COLORS.white,
+  },
+  radioGroup: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 16,
+  },
+  radioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+    marginBottom: 8,
+  },
+  radioLabel: {
+    fontSize: 14,
   },
   input: {
     borderWidth: 1,
@@ -1121,16 +1544,5 @@ const styles = StyleSheet.create({
     height: 100,
     marginVertical: 10,
     borderRadius: 8,
-  },
-  filePreview: {
-    marginVertical: 10,
-    padding: 10,
-    backgroundColor: COLORS.gray,
-    borderRadius: 8,
-  },
-  fileName: {
-    ...FONTS.medium,
-    fontSize: SIZES.small,
-    color: COLORS.text,
   },
 });
