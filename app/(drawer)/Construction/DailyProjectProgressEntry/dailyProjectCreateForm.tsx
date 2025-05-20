@@ -1,4 +1,5 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import { CustomAlert } from "@/components/CustomAlert";
 import { CustomButton } from "@/components/CustomButton";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
@@ -27,6 +28,27 @@ interface ProjectNo {
 interface SubProject {
   id: number;
   buildingName: string;
+}
+
+interface SubProjectVendor {
+  id: number;
+  vendorDetails: string;
+}
+
+interface Equipment {
+  id: number;
+  equipmentName: string;
+}
+
+interface ScopeItem {
+  id: number;
+  scopes: string;
+  uom: string;
+  scopeQuantity: number;
+  scopeCumQuantity: number;
+  certifiedQty?: number;
+  balanceQty?: number;
+  selectedVendor?: number | null;
 }
 
 interface ProjectDetails {
@@ -62,8 +84,40 @@ const DailyProjectCreateForm = () => {
   const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(
     null
   );
+  const [subProjectVendors, setSubProjectVendors] = useState<
+    SubProjectVendor[]
+  >([]);
+  const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [scopeItems, setScopeItems] = useState<ScopeItem[]>([]);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+    onClose?: () => void;
+  }>({
+    visible: false,
+    message: "",
+    type: "info",
+  });
+
+  const resetStates = () => {
+    setShowDatePicker(false);
+    setDprDate(new Date());
+    setProjectNos([]);
+    setSelectedProjectNo(null);
+    setSubProjects([]);
+    setSelectedSubProject(null);
+    setProjectDetails(null);
+    setSubProjectVendors([]);
+    setSelectedVendor(null);
+    setScopeItems([]);
+    setEquipments([]);
+    setError(null);
+  };
 
   const onDprDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -129,6 +183,96 @@ const DailyProjectCreateForm = () => {
     }
   };
 
+  const fetchSubProjectVendors = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SUB_PROJECT_VENDOR.LIST}?id=${selectedSubProject}`
+      );
+      //[{"id":5,"vendorDetails":"Vendor 2 (Tana Bass)"}]
+      setSubProjectVendors(response.data);
+    } catch (error) {
+      console.error("Error fetching sub project vendors:", error);
+      setError("Failed to load sub project vendors. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const fetchScopeItems = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SUB_PROJECT_SCOPE.LIST}?id=${selectedSubProject}`
+      );
+      if (response.data.success) {
+        const items = response.data.data.map((item: any) => ({
+          ...item,
+          certifiedQty: 0,
+          balanceQty: item.scopeQuantity,
+          selectedVendor: null,
+        }));
+        setScopeItems(items);
+      }
+    } catch (error) {
+      console.error("Error fetching scope items:", error);
+      setError("Failed to load scope items. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const fetchEquipments = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SUB_PROJECT_EQUIPMENT.LIST}?id=${selectedSubProject}`
+      );
+      console.log("response", response.data);
+      // Handle direct array response
+      if (Array.isArray(response.data)) {
+        setEquipments(response.data);
+      } else {
+        setEquipments([]);
+      }
+    } catch (error) {
+      console.error("Error fetching equipments:", error);
+      setError("Failed to load equipments. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const handleCertifiedQtyChange = (scopeId: number, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setScopeItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.id === scopeId) {
+          const balanceQty =
+            numValue <= item.scopeQuantity ? item.scopeQuantity - numValue : 0;
+          return {
+            ...item,
+            certifiedQty: numValue,
+            balanceQty,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleEquipmentCountChange = (equipmentId: number, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setEquipments((prevItems) =>
+      prevItems.map((item) =>
+        item.id === equipmentId ? { ...item, count: numValue } : item
+      )
+    );
+  };
+
   const loadUserData = async () => {
     try {
       const userDataString = await AsyncStorage.getItem("userData");
@@ -140,8 +284,46 @@ const DailyProjectCreateForm = () => {
     }
   };
 
+  const validateForm = () => {
+    if (!selectedProjectNo) {
+      setError("Please select a project number.");
+      return false;
+    }
+    if (!selectedSubProject) {
+      setError("Please select a sub project.");
+      return false;
+    }
+    if (!dprDate) {
+      setError("Please select a DPR date.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    if (!userData?.id) {
+      console.log("Waiting for user data to be loaded...");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      dispatch(showLoading());
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setError("Failed to submit form. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
+      resetStates();
       loadUserData();
       fetchProjectNos();
     }, [])
@@ -156,6 +338,9 @@ const DailyProjectCreateForm = () => {
   useEffect(() => {
     if (selectedSubProject) {
       fetchProjectDetails();
+      fetchSubProjectVendors();
+      fetchScopeItems();
+      fetchEquipments();
     }
   }, [selectedSubProject]);
 
@@ -251,16 +436,89 @@ const DailyProjectCreateForm = () => {
       {/* Scope Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>SCOPE</Text>
-        {/* <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Scope Item</Text>
-            <Text style={styles.tableHeaderText}>Vendor</Text>
-            <Text style={styles.tableHeaderText}>Scope Qty</Text>
-            <Text style={styles.tableHeaderText}>Cumulative Qty</Text>
-            <Text style={styles.tableHeaderText}>Certified Qty</Text>
-            <Text style={styles.tableHeaderText}>Balance Qty</Text>
+        {scopeItems.map((item) => (
+          <View key={item.id} style={styles.scopeItemContainer}>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Scope Item</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={`${item.scopes} (${item.uom})`}
+                editable={false}
+              />
+            </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Vendor Code *</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={item.selectedVendor}
+                  onValueChange={(value) => {
+                    setScopeItems((prevItems) =>
+                      prevItems.map((prevItem) =>
+                        prevItem.id === item.id
+                          ? { ...prevItem, selectedVendor: value }
+                          : prevItem
+                      )
+                    );
+                  }}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select Vendor" value={null} />
+                  {subProjectVendors.map((vendor) => (
+                    <Picker.Item
+                      key={vendor.id}
+                      label={vendor.vendorDetails}
+                      value={vendor.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Scope Qty</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={item.scopeQuantity.toString()}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Cumulative Qty</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={item.scopeCumQuantity.toString()}
+                editable={false}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Certified Qty</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                    ? styles.errorInput
+                    : null,
+                ]}
+                value={item.certifiedQty?.toString() || ""}
+                onChangeText={(value) =>
+                  handleCertifiedQtyChange(item.id, value)
+                }
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Balance Qty</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={item.balanceQty?.toString() || "0"}
+                editable={false}
+              />
+            </View>
           </View>
-        </View> */}
+        ))}
       </View>
 
       {/* Key Highlights Section */}
@@ -354,13 +612,42 @@ const DailyProjectCreateForm = () => {
             <Text style={styles.tableHeaderText}>Equipment</Text>
             <Text style={styles.tableHeaderText}>Count</Text>
           </View>
+          {equipments.map((equipment) => (
+            <View key={equipment.id} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{equipment.equipmentName}</Text>
+              <TextInput
+                style={styles.tableCellInput}
+                keyboardType="numeric"
+                placeholder="0"
+                onChangeText={(value) =>
+                  handleEquipmentCountChange(equipment.id, value)
+                }
+              />
+            </View>
+          ))}
         </View>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <CustomButton title="Submit" onPress={() => {}} variant="primary" />
+        <CustomButton
+          title="Submit"
+          onPress={() => {
+            handleSubmit();
+          }}
+          variant="primary"
+        />
       </View>
+
+      {/* Add CustomAlert at the end of the component */}
+      <CustomAlert
+        visible={alert.visible}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        }}
+      />
     </ScrollView>
   );
 };
@@ -482,6 +769,21 @@ const styles = StyleSheet.create({
   },
   datePicker: {
     width: "100%",
+  },
+  scopeItemContainer: {
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+  },
+  disabledInput: {
+    backgroundColor: "#f5f5f5",
+    color: "#666",
+  },
+  errorInput: {
+    borderColor: "red",
+    color: "red",
   },
 });
 

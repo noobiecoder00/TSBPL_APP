@@ -63,6 +63,26 @@ SAFETY: {
     LIST: "/api/SubProjectList",
   },
 
+    // Sub Project Scope
+    SUB_PROJECT_SCOPE: {
+      LIST: "/api/SubProjectScope",
+    },
+
+    // Sub Project Vendor
+    SUB_PROJECT_VENDOR: {
+      LIST: "/api/SubProjectVendorList",
+    },
+  
+    // Sub Project Equipment
+    SUB_PROJECT_EQUIPMENT: {
+      LIST: "/api/SubProjectEquipments",
+    },
+  
+    // DPR Create
+    DPR_CREATE: {
+      CREATE: "/api/DailyProjectProgressEntryCreate",
+    },
+
 } as const;
 
 // API Response Types
