@@ -1,78 +1,168 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import Loader from "@/components/Loader";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
+import httpClient from "@/utils/httpClient";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
 
-// Sample data array
-const vendorData = Array(10).fill({
-  soNumber: "JMR -FAR/05-25/00001",
-  runningNumber: "Tools ",
-  runningDate: "Wire Ropes",
-  projectNo: "31-05-2025",
-  projectName: "11-05-2025",
-  subProjectName: "Construction Manager",
-  vendor: "Vendor 1",
-  regStatus: "In Progress",
-  status: "Inactive",
-  pendingWith: "Construction Manager",
-});
+interface DPRListResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
 const builderBillingAll = () => {
-  const renderItem = ({ item }: { item: (typeof vendorData)[0] }) => (
-    <TouchableOpacity onPress={() => {}} activeOpacity={0.85}>
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [data, setData] = useState<any[]>([]);
+  const [start, setStart] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const PAGE_SIZE = 10;
+
+  const resetState = () => {
+    setData([]);
+    setStart(0);
+    setHasMore(true);
+    setIsLoading(false);
+  };
+
+  const fetchData = async () => {
+    if (!hasMore || isLoading) return;
+
+    setIsLoading(true);
+    dispatch(showLoading());
+
+    try {
+      const response = await httpClient.post<DPRListResponse>(
+        API_ENDPOINTS.BUILDER_BILLING.LIST,
+        {
+          start,
+          length: PAGE_SIZE,
+          search: "",
+          meId: "0",
+        }
+      );
+      //   {
+      //     "success": true,
+      //     "message": "Fetched successfully",
+      //     "data": {
+      //         "draw": 2,
+      //         "recordsTotal": 1,
+      //         "recordsFiltered": 1,
+      //         "data": [
+      //             {
+      //                 "serialNo": 1,
+      //                 "sO_Number": "998",
+      //                 "running_Number": "998",
+      //                 "running_Date": "10-05-2025",
+      //                 "projectNo": "BP3-2826",
+      //                 "projectName": "TATA STEEL (JSR)",
+      //                 "subProject": "Karyn Hutchinson",
+      //                 "vendorMaster": "TEST 1 (V0001235)",
+      //                 "regStatus": "IN PROGRESS",
+      //                 "status": "INACTIVE",
+      //                 "pendingWith": [
+      //                     {
+      //                         "name": "Construction Manager",
+      //                         "roleName": "Construction Manager"
+      //                     }
+      //                 ],
+      //                 "createdDateTime": "10-05-2025 06:28 PM",
+      //                 "id": "MQ=="
+      //             }
+      //         ]
+      //     }
+      // }
+      const items = response.data?.data?.data ?? [];
+      setData((prev) => [...prev, ...items]);
+      setStart((prev) => prev + PAGE_SIZE);
+      setHasMore(items.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("Error fetching DPR data:", error);
+    } finally {
+      setIsLoading(false);
+      dispatch(hideLoading());
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      resetState();
+      fetchData();
+    }, [])
+  );
+
+  const renderItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      onPress={() => {
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+      }}
+      activeOpacity={0.85}
+    >
       <LinearGradient
-        colors={["#f0f0f0", "#dcdcdc", "#c0c0c0"]}
+        colors={["#f0f0f0", "#f0f0f0", "#f0f0f0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="SO Number" value={item.soNumber} />
-          <InfoRow label="Running Number" value={item.runningNumber} />
-          <InfoRow label="Running Date" value={item.runningDate} />
+          <InfoRow label="SO Number" value={item.sO_Number} />
+          <InfoRow label="Running Number" value={item.running_Number} />
+          <InfoRow label="Running Date" value={item.running_Date} />
           <InfoRow label="Project No" value={item.projectNo} />
           <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProjectName} />
-          <InfoRow label="Vendor" value={item.vendor} />
+          <InfoRow label="Sub Project Name" value={item.subProject} />
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={
-              item.regStatus === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInProgress}
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={
-              item.status === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInactive}
           />
-          <InfoRow label="Pending With" value={item.pendingWith} />
+          <InfoRow
+            label="Pending with"
+            value={item.pendingWith
+              ?.map((p: any) => `${p.name} (${p.roleName})`)
+              .join(", ")}
+          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
-    <FlatList
-      data={vendorData}
-      renderItem={renderItem}
-      keyExtractor={(_, index) => index.toString()}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View style={{ flex: 1 }}>
+      <Loader />
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(_, index) => index.toString()}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        onEndReached={fetchData}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoading ? <ActivityIndicator size="small" color="#000" /> : null
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
   );
 };
 
@@ -107,7 +197,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    elevation: 6,
+    elevation: 4,
   },
   content: {
     gap: 6,

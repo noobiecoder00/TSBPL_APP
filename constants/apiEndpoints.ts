@@ -34,11 +34,36 @@ SAFETY: {
   TPI_EXPIRY: "/api/TPI-data",
   CHECKLIST: "/api/checklist-data",
   TPI_DETAILS: "/api/CategoryChecklist/details",
-},
+  TPI_SUBMIT: "/api/EquipmentTPIupdate",
+  CHECKLIST_SUBMIT: "/api/EquipmentCheckListupdate",
+  },
 
+  // Daily Project endpoints
+  DAILY_PROJECT: {
+    LIST: "/api/DPR_list",
+  },
+
+  // Customer Billing endpoints
+  CUSTOMER_BILLING: {
+    LIST: "/api/Customer_Bill_Entry_list",
+  },
+
+  // Builder Billing endpoints
+  BUILDER_BILLING: {
+    LIST: "/api/Builder_Bill_Entry_list",
+  },
+
+  // Project No.
+  PROJECT_NO: {
+    LIST: "/api/ProjectMasterList",
+  },
+
+  // Sub Project No.
+  SUB_PROJECT_NO: {
+    LIST: "/api/SubProjectList",
+  },
 
 } as const;
-
 
 // API Response Types
 export interface ApiResponse<T> {

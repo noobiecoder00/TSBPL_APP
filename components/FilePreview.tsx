@@ -55,6 +55,14 @@ const truncateFileName = (fileName: string, maxLength: number = 20) => {
 };
 
 export default function FilePreview({ file }: FilePreviewProps) {
+  if (!file || !file.uri) {
+    return (
+      <View style={styles.filePreview}>
+        <Text style={styles.noFileText}>No Documents Uploaded</Text>
+      </View>
+    );
+  }
+
   const handleViewDocument = async () => {
     try {
       const supported = await Linking.canOpenURL(file.uri);
@@ -133,5 +141,12 @@ const styles = StyleSheet.create({
     fontSize: SIZES.small - 2,
     color: COLORS.gray,
     marginTop: 4,
+  },
+  noFileText: {
+    ...FONTS.regular,
+    fontSize: SIZES.small,
+    color: COLORS.gray,
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });

@@ -1,15 +1,17 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import { CustomAlert } from "@/components/CustomAlert";
 import { CustomButton } from "@/components/CustomButton";
 import FilePreview from "@/components/FilePreview";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient, { baseURL } from "@/utils/httpClient";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Buffer } from "buffer";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Linking,
@@ -44,6 +46,36 @@ interface TpiChecklist {
   updatedDatetime: string;
 }
 
+interface EquipmentFrequencyChecklist {
+  id: number;
+  equipmentId: number;
+  dateofInspection: string;
+  inspectionBY: number;
+  proofDocument: string | null;
+  remarks: string;
+  createdDatetime: string;
+}
+
+interface EquipmentFrequencyChecklistChild {
+  id: number;
+  equipmentFrequencyChecklistId: number;
+  checklistName: string;
+  result: string;
+  remarks: string;
+  proofDocument: string | null;
+}
+
+interface EquipmentFrequencyChecklistTable {
+  equipmentFrequencyChecklists: EquipmentFrequencyChecklist[];
+  equipmentFrequencyChecklistChild: EquipmentFrequencyChecklistChild[];
+  inspectedBYName: string;
+}
+
+interface TpiFormData {
+  equipmentId: string;
+  tpiExpiryDate: string;
+}
+
 const TpiDetails = () => {
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
@@ -55,6 +87,7 @@ const TpiDetails = () => {
   const router = useRouter();
 
   const [equipmentDetails, setEquipmentDetails] = useState({
+    id: "",
     referenceNo: "",
     equipmentCategory: "",
     equipmentName: "",
@@ -82,13 +115,42 @@ const TpiDetails = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [checklistTables, setChecklistTables] = useState<
+    EquipmentFrequencyChecklistTable[]
+  >([]);
+  const [expandedChecklistIndex, setExpandedChecklistIndex] = useState<
+    number | null
+  >(null);
+
+  const [tpiFormData, setTpiFormData] = useState({
+    equipmentId: "",
+    tpiExpiryDate: "",
+  });
+
+  const [selectedTpiDocument, setSelectedTpiDocument] =
+    useState<FileData | null>(null);
+
+  const resetForm = () => {
+    setTpiExpiryDate(new Date());
+    setSelectedTpiDocument(null);
+    setTpiFormData({
+      equipmentId: "",
+      tpiExpiryDate: "",
+    });
+  };
+
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
-
+  const formatDateToSend = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
   const onTpiExpiryDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -107,29 +169,26 @@ const TpiDetails = () => {
     }
   };
 
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        dispatch(showLoading());
-        await loadUserData();
-        if (userData?.id) {
-          await fetchTpiDetails();
+  useFocusEffect(
+    useCallback(() => {
+      const initialize = async () => {
+        try {
+          dispatch(showLoading());
+          await loadUserData();
+          if (userData?.id) {
+            await fetchTpiDetails();
+            resetForm();
+          }
+        } catch (error) {
+          console.error("Error initializing:", error);
+        } finally {
+          dispatch(hideLoading());
         }
-      } catch (error) {
-        console.error("Error initializing:", error);
-      } finally {
-        dispatch(hideLoading());
-      }
-    };
+      };
 
-    initialize();
-  }, [id]); // Only depend on id changes
-
-  useEffect(() => {
-    if (userData?.id) {
-      fetchTpiDetails();
-    }
-  }, [userData?.id]);
+      initialize();
+    }, [id, userData?.id])
+  );
 
   const fetchTpiDetails = async () => {
     if (!userData?.id) {
@@ -148,6 +207,7 @@ const TpiDetails = () => {
         userData.id.toString(),
         "utf-8"
       ).toString("base64");
+
       const response = await httpClient.get(
         `${API_ENDPOINTS.SAFETY.TPI_DETAILS}?id=${encodedId}&UserId=${encodedUserId}&tpi=1`
       );
@@ -155,13 +215,14 @@ const TpiDetails = () => {
       const tpiInfoDetails = response.data.equipmentTPIChecklists;
       setEquipmentDetails(equipmentDetails);
       setTpiInfoDetails(tpiInfoDetails);
+      setChecklistTables(response.data.equipmentFrequencyChecklistTables || []);
 
       if (equipmentDetails.proofUploadDocuments) {
         const files = equipmentDetails.proofUploadDocuments
           .split(",")
           .map((fileName: string) => ({
-            uri: `${baseURL}/uploads/equipmentfiles/${fileName}`,
-            name: fileName,
+            uri: `${baseURL}/uploads/Equipmentsfiles/${fileName.trim()}`,
+            name: fileName.trim(),
             type: fileName.toLowerCase().endsWith(".pdf")
               ? "application/pdf"
               : "image/jpeg",
@@ -169,10 +230,9 @@ const TpiDetails = () => {
         setProofUploaded(files);
       }
 
-      console.log(proofUploaded);
-
       //Set equipment details
       setEquipmentDetails({
+        id: equipmentDetails.id || "",
         referenceNo: equipmentDetails.referenceNo || "",
         equipmentCategory: equipmentDetails.equipmentCategory.category || "",
         equipmentName: equipmentDetails.equipmentName || "",
@@ -193,6 +253,26 @@ const TpiDetails = () => {
     }
   };
 
+  const pickDocument = async (setFile: (file: FileData | null) => void) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled === false) {
+        const asset = result.assets[0];
+        setFile({
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType || "application/octet-stream",
+        });
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick document");
+    }
+  };
+
   const handleViewDocument = async (file: FileData) => {
     try {
       const supported = await Linking.canOpenURL(file.uri);
@@ -204,6 +284,112 @@ const TpiDetails = () => {
     } catch (error) {
       console.error("Error opening document:", error);
       Alert.alert("Error", "Failed to open document");
+    }
+  };
+
+  const validateForm = () => {
+    const requiredFields = [
+      // { field: "equipmentId", label: "Equipment ID" },
+      { field: "tpiExpiryDate", label: "TPI Expiry Date" },
+    ];
+
+    for (const { field, label } of requiredFields) {
+      if (!tpiFormData[field as keyof typeof tpiFormData]) {
+        Alert.alert("Validation Error", `${label} is required`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!userData?.id) {
+      console.log("Waiting for user data to be loaded...");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      dispatch(showLoading());
+
+      const formDataToSend = {
+        EquipmentId: equipmentDetails.id || "",
+        TPIExpiryDate: formatDateToSend(tpiExpiryDate),
+        CreatedBy: userData?.id
+          ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
+          : "",
+      };
+
+      const multipartFormData = new FormData();
+
+      // Add all text fields
+      Object.entries(formDataToSend).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          multipartFormData.append(key, value.toString());
+        }
+      });
+
+      if (selectedTpiDocument) {
+        const fileToUpload = {
+          uri: selectedTpiDocument.uri,
+          type: selectedTpiDocument.type,
+          name: selectedTpiDocument.name,
+        };
+        multipartFormData.append("proofDocuments", fileToUpload as any);
+      }
+
+      console.log("Form data being sent:", {
+        EquipmentId: formDataToSend.EquipmentId,
+        TPIExpiryDate: formDataToSend.TPIExpiryDate,
+        CreatedBy: formDataToSend.CreatedBy,
+        hasDocument: !!selectedTpiDocument,
+      });
+
+      const response = await httpClient.post(
+        API_ENDPOINTS.SAFETY.TPI_SUBMIT,
+        multipartFormData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "success",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+            setTimeout(() => {
+              router.push("/(drawer)/home");
+            }, 500);
+          },
+        });
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit action",
+          type: "error",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error("Error submitting action:", error);
+      setAlert({
+        visible: true,
+        message: error.response?.data?.message || "Failed to submit action",
+        type: "error",
+        onClose: () => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        },
+      });
+    } finally {
+      resetForm();
+      setIsSubmitting(false);
+      dispatch(hideLoading());
     }
   };
 
@@ -294,11 +480,15 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Proof Uploaded</Text>
           <View style={styles.proofGrid}>
-            {proofUploaded.map((proof, index) => (
-              <View key={index} style={styles.proofItem}>
-                <FilePreview file={proof} />
-              </View>
-            ))}
+            {proofUploaded && proofUploaded.length > 0 ? (
+              proofUploaded.map((proof, index) => (
+                <View key={index} style={styles.proofItem}>
+                  <FilePreview file={proof} />
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noDocumentsText}>No Documents Uploaded</Text>
+            )}
           </View>
         </View>
 
@@ -340,25 +530,41 @@ const TpiDetails = () => {
                 <Text style={styles.tableCellText}>{tpi.status}</Text>
               </View>
               <View style={styles.tableCell}>
-                {tpi.proofDocuments && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const files = tpi.proofDocuments
-                        .split(",")
-                        .map((fileName: string) => ({
-                          uri: `${baseURL}/uploads/EquipmentFiles/${fileName}`,
-                          name: fileName,
+                {tpi.proofDocuments ? (
+                  <View style={styles.tpiProofGrid}>
+                    {tpi.proofDocuments
+                      .split(",")
+                      .map((fileName: string, fileIndex: number) => {
+                        const file = {
+                          uri: `${baseURL}/uploads/Equipmentsfiles/${fileName.trim()}`,
+                          name: fileName.trim(),
                           type: fileName.toLowerCase().endsWith(".pdf")
                             ? "application/pdf"
                             : "image/jpeg",
-                        }));
-                      if (files.length > 0) {
-                        handleViewDocument(files[0]);
-                      }
-                    }}
-                  >
-                    <Text style={styles.viewButtonText}>View</Text>
-                  </TouchableOpacity>
+                        };
+                        return (
+                          <TouchableOpacity
+                            key={fileIndex}
+                            style={styles.tpiProofItem}
+                            onPress={() => handleViewDocument(file)}
+                          >
+                            <MaterialIcons
+                              name={
+                                file.type.startsWith("image/")
+                                  ? "image"
+                                  : "description"
+                              }
+                              size={20}
+                              color={COLORS.primary}
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                  </View>
+                ) : (
+                  <Text style={styles.noDocumentsText}>
+                    No Documents Uploaded
+                  </Text>
                 )}
               </View>
             </View>
@@ -369,87 +575,235 @@ const TpiDetails = () => {
       {/* Checklist */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Checklist</Text>
-
-        <TouchableOpacity
-          style={styles.collapsableBar}
-          onPress={() => setIsChecklistExpanded(!isChecklistExpanded)}
-        >
-          <Text style={styles.collapsableBarText}>
-            Date of Inspection 10-05-2025
-          </Text>
-          <Ionicons
-            name={isChecklistExpanded ? "chevron-up" : "chevron-down"}
-            size={24}
-            color={COLORS.gray}
-          />
-        </TouchableOpacity>
-
-        {isChecklistExpanded && (
-          <View style={styles.collapsableContent}>
-            <View style={styles.checklistItem}>
-              <Text style={styles.checklistItemText}>1. Checklist Item</Text>
-              <Text style={styles.checklistStatus}>Check 1</Text>
-            </View>
-            <View style={styles.checklistItem}>
-              <Text style={styles.checklistItemText}>2. Result</Text>
-              <Text style={styles.checklistStatus}>Fail</Text>
-            </View>
-            <View style={styles.checklistItem}>
-              <Text style={styles.checklistItemText}>3. Remarks</Text>
-              <Text style={styles.checklistStatus}>Good</Text>
-            </View>
-            <View style={[styles.checklistItem]}>
-              <Text style={styles.checklistItemText}>4. Documents</Text>
-              <TouchableOpacity style={styles.viewButton}>
-                <Text style={styles.viewButtonText}>View</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Uploaded Documents</Text>
-              <View style={{ marginTop: 2 }}>
-                <CustomButton
-                  title="View"
-                  onPress={() => {}}
-                  variant="primary"
-                />
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Remarks</Text>
-              <TextInput style={styles.input} value="Good" editable={false} />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Date of Inspection</Text>
-              <TextInput
-                style={styles.input}
-                value="10-05-2025"
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setIsChecked(!isChecked)}
-              >
-                <View
-                  style={[styles.checkbox, isChecked && styles.checkboxChecked]}
-                >
-                  {isChecked && (
+        {checklistTables.length === 0 ? (
+          <Text style={styles.noDocumentsText}>No Checklist Data</Text>
+        ) : (
+          checklistTables.map(
+            (table: EquipmentFrequencyChecklistTable, idx: number) => {
+              const parent = table.equipmentFrequencyChecklists[0];
+              const children = table.equipmentFrequencyChecklistChild;
+              const isExpanded = expandedChecklistIndex === idx;
+              return (
+                <View key={parent.id} style={{ marginBottom: 16 }}>
+                  {/* Collapsible Bar */}
+                  <TouchableOpacity
+                    style={styles.collapsableBar}
+                    onPress={() =>
+                      setExpandedChecklistIndex(isExpanded ? null : idx)
+                    }
+                  >
+                    <Text style={styles.collapsableBarText}>
+                      Date of Inspection:{" "}
+                      {parent.dateofInspection
+                        ? new Date(parent.dateofInspection).toLocaleDateString(
+                            "en-GB"
+                          )
+                        : "-"}
+                    </Text>
                     <Ionicons
-                      name="checkmark"
-                      size={16}
-                      color={COLORS.background}
+                      name={isExpanded ? "chevron-up" : "chevron-down"}
+                      size={24}
+                      color={COLORS.white}
                     />
+                  </TouchableOpacity>
+
+                  {/* Collapsible Content */}
+                  {isExpanded && (
+                    <View style={styles.collapsableContent}>
+                      {/* Checklist Table */}
+                      {children.map(
+                        (
+                          child: EquipmentFrequencyChecklistChild,
+                          cidx: number
+                        ) => (
+                          <View
+                            key={child.id}
+                            style={[
+                              styles.checklistCard,
+                              cidx !== children.length - 1 &&
+                                styles.checklistCardBorder,
+                            ]}
+                          >
+                            <View style={styles.cardRow}>
+                              <Text style={styles.cardLabel}>
+                                Checklist Item:
+                              </Text>
+                              <Text style={styles.cardValue}>
+                                {child.checklistName}
+                              </Text>
+                            </View>
+                            <View style={styles.cardRow}>
+                              <Text style={styles.cardLabel}>Result:</Text>
+                              <Text style={styles.cardValue}>
+                                {child.result}
+                              </Text>
+                            </View>
+                            <View style={styles.cardRow}>
+                              <Text style={styles.cardLabel}>Remarks:</Text>
+                              <Text style={styles.cardValue}>
+                                {child.remarks}
+                              </Text>
+                            </View>
+                            <View style={styles.cardRow}>
+                              <Text style={styles.cardLabel}>Documents:</Text>
+                              {child.proofDocument ? (
+                                <View style={styles.inlineProofIcons}>
+                                  {child.proofDocument
+                                    .split(",")
+                                    .map(
+                                      (fileName: string, fileIndex: number) => {
+                                        const file = {
+                                          uri: `${baseURL}/uploads/Equipmentsfiles/${fileName.trim()}`,
+                                          name: fileName.trim(),
+                                          type: fileName
+                                            .toLowerCase()
+                                            .endsWith(".pdf")
+                                            ? "application/pdf"
+                                            : fileName
+                                                .toLowerCase()
+                                                .endsWith(".xlsx") ||
+                                              fileName
+                                                .toLowerCase()
+                                                .endsWith(".xls")
+                                            ? "application/vnd.ms-excel"
+                                            : fileName
+                                                .toLowerCase()
+                                                .endsWith(".jpg") ||
+                                              fileName
+                                                .toLowerCase()
+                                                .endsWith(".jpeg") ||
+                                              fileName
+                                                .toLowerCase()
+                                                .endsWith(".png")
+                                            ? "image/jpeg"
+                                            : "application/octet-stream",
+                                        };
+                                        return (
+                                          <TouchableOpacity
+                                            key={fileIndex}
+                                            style={styles.inlineProofIconItem}
+                                            onPress={() =>
+                                              handleViewDocument(file)
+                                            }
+                                          >
+                                            <MaterialIcons
+                                              name={
+                                                file.type.startsWith("image/")
+                                                  ? "image"
+                                                  : file.type ===
+                                                    "application/pdf"
+                                                  ? "picture-as-pdf"
+                                                  : "description"
+                                              }
+                                              size={22}
+                                              color={COLORS.primary}
+                                            />
+                                          </TouchableOpacity>
+                                        );
+                                      }
+                                    )}
+                                </View>
+                              ) : (
+                                <Text style={styles.noDocumentsText}>
+                                  No Documents Uploaded
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        )
+                      )}
+
+                      {/* Uploaded Documents for Parent */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Uploaded Documents</Text>
+                        {parent.proofDocument ? (
+                          <View style={styles.tpiProofGrid}>
+                            {parent.proofDocument
+                              .split(",")
+                              .map((fileName: string, fileIndex: number) => {
+                                const file = {
+                                  uri: `${baseURL}/uploads/ChecklistFiles/${fileName.trim()}`,
+                                  name: fileName.trim(),
+                                  type: fileName.toLowerCase().endsWith(".pdf")
+                                    ? "application/pdf"
+                                    : fileName
+                                        .toLowerCase()
+                                        .endsWith(".xlsx") ||
+                                      fileName.toLowerCase().endsWith(".xls")
+                                    ? "application/vnd.ms-excel"
+                                    : fileName.toLowerCase().endsWith(".jpg") ||
+                                      fileName
+                                        .toLowerCase()
+                                        .endsWith(".jpeg") ||
+                                      fileName.toLowerCase().endsWith(".png")
+                                    ? "image/jpeg"
+                                    : "application/octet-stream",
+                                };
+                                return (
+                                  <FilePreview key={fileIndex} file={file} />
+                                );
+                              })}
+                          </View>
+                        ) : (
+                          <Text style={styles.noDocumentsText}>
+                            No Documents Uploaded
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Remarks */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Remarks</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={parent.remarks || ""}
+                          editable={false}
+                        />
+                      </View>
+
+                      {/* Date of Inspection */}
+                      <View style={styles.formGroup}>
+                        <Text style={styles.label}>Date of Inspection</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={
+                            parent.dateofInspection
+                              ? new Date(
+                                  parent.dateofInspection
+                                ).toLocaleDateString("en-GB")
+                              : ""
+                          }
+                          editable={false}
+                        />
+                      </View>
+
+                      {/* Inspection By */}
+                      <View style={styles.formGroup}>
+                        <View style={styles.checkboxContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.customCheckbox,
+                              styles.disabledCheckbox,
+                            ]}
+                          >
+                            <MaterialIcons
+                              name="check"
+                              size={18}
+                              color="#fff"
+                            />
+                          </TouchableOpacity>
+                          <Text style={styles.checkboxLabel}>
+                            Test Certified By{" "}
+                            {table.inspectedBYName || "Certified"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                   )}
                 </View>
-                <Text style={styles.checkboxLabel}>Test Certified by PMD</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+              );
+            }
+          )
         )}
       </View>
 
@@ -477,15 +831,35 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Upload Files</Text>
           <View style={{ marginTop: 2 }}>
-            <CustomButton title="Upload" onPress={() => {}} variant="primary" />
+            <CustomButton
+              title="Upload"
+              onPress={() => pickDocument(setSelectedTpiDocument)}
+              variant="primary"
+            />
+            {selectedTpiDocument && <FilePreview file={selectedTpiDocument} />}
           </View>
         </View>
       </View>
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <CustomButton title="Submit" onPress={() => {}} variant="primary" />
+        <CustomButton
+          title="Submit"
+          onPress={() => {
+            handleSubmit();
+          }}
+          variant="primary"
+        />
       </View>
+
+      <CustomAlert
+        visible={alert.visible}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        }}
+      />
     </ScrollView>
   );
 };
@@ -598,7 +972,7 @@ const styles = StyleSheet.create({
     borderRightColor: COLORS.gray,
   },
   tableCellText: {
-    fontSize: SIZES.medium,
+    fontSize: SIZES.medium - 2,
     textAlign: "center",
   },
   buttonContainer: {
@@ -609,77 +983,91 @@ const styles = StyleSheet.create({
   datePicker: {
     width: "100%",
   },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+
+  customCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50", // green to indicate "checked"
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  disabledCheckbox: {
+    opacity: 0.6,
+  },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: SIZES.medium,
+    color: COLORS.text,
+  },
+
   collapsableBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.primary,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.gray,
     borderRadius: 8,
     marginBottom: 8,
   },
   collapsableBarText: {
     fontSize: SIZES.medium,
     fontWeight: "500",
-    color: COLORS.text,
+    color: COLORS.white,
   },
   collapsableContent: {
     backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: COLORS.gray,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderColor: COLORS.lightGray,
     borderRadius: 8,
-    padding: 16,
+    padding: 6,
   },
-  checklistItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
+  checklistCard: {
+    backgroundColor: "#f5f8ff",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // For Android shadow
+    borderWidth: 1,
+    borderColor: "#e0e6f0",
+  },
+  checklistCardBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
+    borderBottomColor: "#d0d7e3", // softer gray
+    paddingBottom: 12,
+    marginBottom: 12,
   },
-  checklistItemText: {
-    fontSize: SIZES.medium,
-    color: COLORS.text,
-    flex: 1,
-  },
-  checklistStatus: {
-    fontSize: SIZES.medium,
-    color: COLORS.text,
-    fontWeight: "500",
-  },
-  viewButton: {
-    backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 5,
-  },
-  viewButtonText: {
-    color: COLORS.primary,
-    textDecorationLine: "underline",
-  },
-  checkboxContainer: {
+  cardRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 8,
+    alignItems: "flex-start",
+    marginBottom: 10,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: 4,
-    marginRight: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-  },
-  checkboxLabel: {
-    fontSize: SIZES.medium,
+  cardLabel: {
+    fontWeight: "600",
     color: COLORS.text,
+    minWidth: 120,
+    fontSize: SIZES.medium,
+    lineHeight: 20,
+  },
+  cardValue: {
+    color: COLORS.text,
+    fontSize: SIZES.medium,
+    flex: 1,
+    flexWrap: "wrap",
+    lineHeight: 20,
   },
   proofGrid: {
     flexDirection: "row",
@@ -690,5 +1078,29 @@ const styles = StyleSheet.create({
   proofItem: {
     width: "30%",
     aspectRatio: 1,
+  },
+  tpiProofGrid: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tpiProofItem: {
+    padding: 4,
+  },
+  noDocumentsText: {
+    fontSize: SIZES.small,
+    color: COLORS.gray,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginVertical: 8,
+  },
+  inlineProofIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inlineProofIconItem: {
+    marginRight: 8,
   },
 });

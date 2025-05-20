@@ -62,8 +62,6 @@ const checklist = () => {
         API_ENDPOINTS.SAFETY.CHECKLIST
       );
 
-      console.log("Raw response:", response);
-
       const items = response.data?.equipmentCategoryChecklists ?? [];
       console.log("Items received:", items.length);
       console.table(items);

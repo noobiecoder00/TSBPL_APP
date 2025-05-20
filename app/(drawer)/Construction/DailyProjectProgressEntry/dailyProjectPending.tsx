@@ -1,78 +1,159 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import Loader from "@/components/Loader";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
+import httpClient from "@/utils/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
-import React from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
 
-// Sample data array
-const vendorData = Array(10).fill({
-  dprNumber: "EQP-FAR/05-25/00001",
-  dprDate: "Tools ",
-  projectNo: "Wire Ropes",
-  projectName: "31-05-2025",
-  subProjectName: "11-05-2025",
-  regStatus: "In Progress",
-  status: "Inactive",
-  pendingWith: "Construction Manager",
-});
+interface DPRListResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+interface UserData {
+  id: string;
+}
 
 const dailyProjectPending = () => {
-  const renderItem = ({ item }: { item: (typeof vendorData)[0] }) => (
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [data, setData] = useState<any[]>([]);
+  const [start, setStart] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  const PAGE_SIZE = 10;
+
+  const resetState = () => {
+    setData([]);
+    setStart(0);
+    setHasMore(true);
+    setIsLoading(false);
+  };
+
+  const fetchData = async () => {
+    if (!hasMore || isLoading || !userData?.id) {
+      return;
+    }
+    setIsLoading(true);
+    dispatch(showLoading());
+
+    try {
+      const response = await httpClient.post<DPRListResponse>(
+        API_ENDPOINTS.DAILY_PROJECT.LIST,
+        {
+          start,
+          length: PAGE_SIZE,
+          search: "",
+          meId: Buffer.from(userData?.id.toString(), "utf-8").toString(
+            "base64"
+          ),
+        }
+      );
+
+      const items = response.data?.data?.data ?? [];
+      setData((prev) => [...prev, ...items]);
+      setStart((prev) => prev + PAGE_SIZE);
+      setHasMore(items.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("Error fetching DPR data:", error);
+    } finally {
+      setIsLoading(false);
+      dispatch(hideLoading());
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      await loadUserData(); // ensure userData is set
+      fetchData(); // call API only after that
+    };
+    init();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
-      onPress={() => router.push("/Safety/checklistDetails")}
+      onPress={() => {
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+      }}
       activeOpacity={0.85}
     >
       <LinearGradient
-        colors={["#f0f0f0", "#dcdcdc", "#c0c0c0"]}
+        colors={["#f0f0f0", "#f0f0f0", "#f0f0f0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="DPR Number" value={item.dprNumber} />
-          <InfoRow label="DPR Date" value={item.dprDate} />
+          <InfoRow label="DPR Number" value={item.dpR_Number} />
+          <InfoRow label="DPR Date" value={item.dpR_Date} />
           <InfoRow label="Project No" value={item.projectNo} />
           <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProjectName} />
+          <InfoRow label="Sub Project Name" value={item.subProject} />
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={
-              item.regStatus === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInProgress}
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={
-              item.status === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInactive}
           />
-          <InfoRow label="Pending With" value={item.pendingWith} />
+          <InfoRow
+            label="Pending with"
+            value={item.pendingWith
+              ?.map((p: any) => `${p.name} (${p.roleName})`)
+              .join(", ")}
+          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
-    <FlatList
-      data={vendorData}
-      renderItem={renderItem}
-      keyExtractor={(_, index) => index.toString()}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View style={{ flex: 1 }}>
+      <Loader />
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(_, index) => index.toString()}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        onEndReached={fetchData}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoading ? <ActivityIndicator size="small" color="#000" /> : null
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
   );
 };
 
@@ -107,7 +188,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    elevation: 6,
+    elevation: 4,
   },
   content: {
     gap: 6,

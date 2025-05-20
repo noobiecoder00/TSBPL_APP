@@ -1,74 +1,137 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import Loader from "@/components/Loader";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
+import httpClient from "@/utils/httpClient";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
 
-// Sample data array
-const vendorData = Array(10).fill({
-  dprNumber: "JMR -FAR/05-25/00001",
-  dprDate: "Tools ",
-  projectNo: "Wire Ropes",
-  projectName: "31-05-2025",
-  subProjectName: "11-05-2025",
-  regStatus: "In Progress",
-  status: "Inactive",
-  pendingWith: "Construction Manager",
-});
+interface CustomerBillingListResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
 
 const customerBillingAll = () => {
-  const renderItem = ({ item }: { item: (typeof vendorData)[0] }) => (
-    <TouchableOpacity onPress={() => {}} activeOpacity={0.85}>
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [data, setData] = useState<any[]>([]);
+  const [start, setStart] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const PAGE_SIZE = 10;
+
+  const resetState = () => {
+    setData([]);
+    setStart(0);
+    setHasMore(true);
+    setIsLoading(false);
+  };
+
+  const fetchData = async () => {
+    if (!hasMore || isLoading) return;
+
+    setIsLoading(true);
+    dispatch(showLoading());
+
+    try {
+      const response = await httpClient.post<CustomerBillingListResponse>(
+        API_ENDPOINTS.CUSTOMER_BILLING.LIST,
+        {
+          start,
+          length: PAGE_SIZE,
+          search: "",
+          meId: "0",
+        }
+      );
+
+      const items = response.data?.data?.data ?? [];
+      setData((prev) => [...prev, ...items]);
+      setStart((prev) => prev + PAGE_SIZE);
+      setHasMore(items.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("Error fetching DPR data:", error);
+    } finally {
+      setIsLoading(false);
+      dispatch(hideLoading());
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      resetState();
+      fetchData();
+    }, [])
+  );
+
+  const renderItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      onPress={() => {
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+      }}
+      activeOpacity={0.85}
+    >
       <LinearGradient
-        colors={["#f0f0f0", "#dcdcdc", "#c0c0c0"]}
+        colors={["#f0f0f0", "#f0f0f0", "#f0f0f0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="JMR Number" value={item.dprNumber} />
-          <InfoRow label="JMR Date" value={item.dprDate} />
+          <InfoRow label="JMR Number" value={item.jmR_Number} />
+          <InfoRow label="JMR Date" value={item.jmR_Date} />
           <InfoRow label="Project No" value={item.projectNo} />
           <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProjectName} />
+          <InfoRow label="Sub Project Name" value={item.subProject} />
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={
-              item.regStatus === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInProgress}
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={
-              item.status === "Pending"
-                ? styles.statusInProgress
-                : styles.statusInactive
-            }
+            valueStyle={styles.statusInactive}
           />
-          <InfoRow label="Pending With" value={item.pendingWith} />
+          <InfoRow
+            label="Pending with"
+            value={item.pendingWith
+              ?.map((p: any) => `${p.name} (${p.roleName})`)
+              .join(", ")}
+          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
-    <FlatList
-      data={vendorData}
-      renderItem={renderItem}
-      keyExtractor={(_, index) => index.toString()}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View style={{ flex: 1 }}>
+      <Loader />
+      <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(_, index) => index.toString()}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        onEndReached={fetchData}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoading ? <ActivityIndicator size="small" color="#000" /> : null
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
   );
 };
 
@@ -103,7 +166,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    elevation: 6,
+    elevation: 4,
   },
   content: {
     gap: 6,

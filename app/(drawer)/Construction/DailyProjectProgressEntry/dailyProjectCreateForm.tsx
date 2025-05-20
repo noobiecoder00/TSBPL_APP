@@ -1,8 +1,13 @@
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
 import { CustomButton } from "@/components/CustomButton";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
+import httpClient from "@/utils/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import React, { useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -12,8 +17,31 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch } from "react-redux";
+
+interface ProjectNo {
+  value: number;
+  text: string;
+}
+
+interface SubProject {
+  id: number;
+  buildingName: string;
+}
+
+interface ProjectDetails {
+  projectName: string;
+  doNumber: string;
+  noOfBuilding: number;
+  buildingName: string;
+}
+
+interface UserData {
+  id: string;
+}
 
 const DailyProjectCreateForm = () => {
+  const dispatch = useDispatch();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dprDate, setDprDate] = useState(new Date());
   const formatDate = (date: Date) => {
@@ -23,12 +51,114 @@ const DailyProjectCreateForm = () => {
     return `${day}-${month}-${year}`;
   };
 
+  const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
+  const [selectedProjectNo, setSelectedProjectNo] = useState<number | null>(
+    null
+  );
+  const [subProjects, setSubProjects] = useState<SubProject[]>([]);
+  const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
+    null
+  );
+  const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+
   const onDprDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDprDate(selectedDate);
     }
   };
+
+  const fetchProjectNos = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(API_ENDPOINTS.PROJECT_NO.LIST);
+      setProjectNos(response.data);
+    } catch (error) {
+      console.error("Error fetching project nos:", error);
+      setError("Failed to load project nos. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const fetchSubProjects = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SUB_PROJECT_NO.LIST}?id=${selectedProjectNo}`
+      );
+      console.log("response", response.data);
+      // [{"id":2,"buildingName":"Ta"}]
+      setSubProjects(response.data);
+    } catch (error) {
+      console.error("Error fetching sub projects:", error);
+      setError("Failed to load sub projects. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const fetchProjectDetails = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `/api/SubProjectDetails?id=${selectedSubProject}`
+      );
+      console.log("response", response.data);
+      //   [
+      //     {
+      //         "projectName": "TATA STEEL (JSR)",
+      //         "doNumber": "7",
+      //         "noOfBuilding": 711,
+      //         "buildingName": "Karyn Hutchinson"
+      //     }
+      // ]
+      setProjectDetails(response.data[0]);
+    } catch (error) {
+      console.error("Error fetching project details:", error);
+      setError("Failed to load project details. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+      fetchProjectNos();
+    }, [])
+  );
+
+  useEffect(() => {
+    if (selectedProjectNo) {
+      fetchSubProjects();
+    }
+  }, [selectedProjectNo]);
+
+  useEffect(() => {
+    if (selectedSubProject) {
+      fetchProjectDetails();
+    }
+  }, [selectedSubProject]);
+
   return (
     <ScrollView style={styles.container}>
       {/* Building Details Section */}
@@ -37,8 +167,19 @@ const DailyProjectCreateForm = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Project Number</Text>
           <View style={styles.pickerContainer}>
-            <Picker style={styles.picker}>
-              <Picker.Item label="-- Select Project --" value="" />
+            <Picker
+              selectedValue={selectedProjectNo}
+              onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="-- Select Project --" value={null} />
+              {projectNos.map((projectNo) => (
+                <Picker.Item
+                  key={projectNo.value}
+                  label={projectNo.text}
+                  value={projectNo.value}
+                />
+              ))}
             </Picker>
           </View>
         </View>
@@ -46,18 +187,47 @@ const DailyProjectCreateForm = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Sub Project</Text>
           <View style={styles.pickerContainer}>
-            <Picker style={styles.picker}>
-              <Picker.Item label="-- Select Sub Project --" value="" />
+            <Picker
+              selectedValue={selectedSubProject}
+              onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="-- Select Sub Project --" value={null} />
+              {subProjects.map((subProject) => (
+                <Picker.Item
+                  key={subProject.id}
+                  label={subProject.buildingName}
+                  value={subProject.id}
+                />
+              ))}
             </Picker>
           </View>
         </View>
 
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoText}>Name of Project: </Text>
-          <Text style={styles.infoText}>DO Number: </Text>
-          <Text style={styles.infoText}>Total No. of Buildings: </Text>
-          <Text style={styles.infoText}>Building Name(s): </Text>
-        </View>
+        {projectDetails && (
+          <View style={styles.infoContainer}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Name of Project: </Text>
+              <Text style={styles.infoValue}>{projectDetails.projectName}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>DO Number: </Text>
+              <Text style={styles.infoValue}>{projectDetails.doNumber}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Total No. of Buildings: </Text>
+              <Text style={styles.infoValue}>
+                {projectDetails.noOfBuilding}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Building Name(s): </Text>
+              <Text style={styles.infoValue}>
+                {projectDetails.buildingName}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>DPR Date *</Text>
@@ -254,16 +424,22 @@ const styles = StyleSheet.create({
     height: 50,
   },
   infoContainer: {
-    backgroundColor: "#fff",
-    padding: 16,
+    marginVertical: 10,
+    padding: 10,
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.gray,
-    marginVertical: 16,
   },
-  infoText: {
-    fontSize: SIZES.medium,
-    marginBottom: 8,
+  infoRow: {
+    flexDirection: "row",
+    marginBottom: 6,
+    flexWrap: "wrap",
+  },
+  infoLabel: {
+    fontWeight: "bold",
+    color: "#333",
+  },
+  infoValue: {
+    color: "#555",
   },
   tableContainer: {
     borderWidth: 1,

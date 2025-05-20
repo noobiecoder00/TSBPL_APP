@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SceneMap, TabView } from "react-native-tab-view";
-import { COLORS } from "../../../../constants/theme"; // Adjust p
+import { COLORS } from "../../../../constants/theme";
 import dailyProjectAll from "./dailyProjectAll";
 import dailyProjectPending from "./dailyProjectPending";
 
@@ -53,7 +53,7 @@ export default DailyProjectIndex;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background || "#fff",
+    backgroundColor: "#fff",
     // justifyContent: "center",
   },
   title: {

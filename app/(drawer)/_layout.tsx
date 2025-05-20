@@ -142,8 +142,8 @@ export default function DrawerLayout() {
           <Drawer.Screen
             name="Safety/tpiExpiry"
             options={{
-              drawerLabel: "TPI Expiry",
-              title: "TPI Expiry",
+              drawerLabel: "Pending TPI Expiry",
+              title: "Pending TPI Expiry",
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -158,8 +158,16 @@ export default function DrawerLayout() {
           <Drawer.Screen
             name="Safety/tpiDetails"
             options={{
-              drawerLabel: "TPI Expiry Details",
-              title: "TPI Expiry Details",
+              drawerLabel: "Equipment Details",
+              title: "Equipment Details",
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Safety/tpiExpiry")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -174,8 +182,8 @@ export default function DrawerLayout() {
           <Drawer.Screen
             name="Safety/checklist"
             options={{
-              drawerLabel: "Check List",
-              title: "Check List",
+              drawerLabel: "Pending Check List",
+              title: "Pending Check List",
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -190,8 +198,16 @@ export default function DrawerLayout() {
           <Drawer.Screen
             name="Safety/checklistDetails"
             options={{
-              drawerLabel: "Check List Details",
-              title: "Check List Details",
+              drawerLabel: "Equipment Details",
+              title: "Equipment Details",
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Safety/checklist")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}

@@ -1,6 +1,7 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
 import { CustomAlert } from "@/components/CustomAlert";
 import { CustomButton } from "@/components/CustomButton";
+import FilePreview from "@/components/FilePreview";
 import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
@@ -14,7 +15,6 @@ import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -225,26 +225,6 @@ export default function CWCreateForm() {
     } catch (error) {
       Alert.alert("Error", "Failed to pick document");
     }
-  };
-
-  const renderFilePreview = (file: FileData | null) => {
-    if (!file) return null;
-
-    if (file.type.startsWith("image/")) {
-      return (
-        <Image
-          source={{ uri: file.uri }}
-          style={styles.previewImage}
-          resizeMode="cover"
-        />
-      );
-    }
-
-    return (
-      <View style={styles.filePreview}>
-        <Text style={styles.fileName}>{file.name}</Text>
-      </View>
-    );
   };
 
   const validateForm = () => {
@@ -811,7 +791,11 @@ export default function CWCreateForm() {
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
               <Text style={styles.uploadButtonText}>Choose Photo</Text>
             </TouchableOpacity>
-            {selectedPhoto && renderFilePreview(selectedPhoto)}
+            {selectedPhoto ? (
+              <FilePreview file={selectedPhoto} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -822,7 +806,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedIdProof && renderFilePreview(selectedIdProof)}
+            {selectedIdProof ? (
+              <FilePreview file={selectedIdProof} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -833,8 +821,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedMedicalExamination &&
-              renderFilePreview(selectedMedicalExamination)}
+            {selectedMedicalExamination ? (
+              <FilePreview file={selectedMedicalExamination} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -845,8 +836,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedPoliceVerification &&
-              renderFilePreview(selectedPoliceVerification)}
+            {selectedPoliceVerification ? (
+              <FilePreview file={selectedPoliceVerification} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
         </View>
 
@@ -861,8 +855,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedSafetyInduction &&
-              renderFilePreview(selectedSafetyInduction)}
+            {selectedSafetyInduction ? (
+              <FilePreview file={selectedSafetyInduction} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -873,7 +870,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedWahCertified && renderFilePreview(selectedWahCertified)}
+            {selectedWahCertified ? (
+              <FilePreview file={selectedWahCertified} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
@@ -884,8 +885,11 @@ export default function CWCreateForm() {
             >
               <Text style={styles.uploadButtonText}>Choose File</Text>
             </TouchableOpacity>
-            {selectedFirstAidTraining &&
-              renderFilePreview(selectedFirstAidTraining)}
+            {selectedFirstAidTraining ? (
+              <FilePreview file={selectedFirstAidTraining} />
+            ) : (
+              <Text style={styles.noFileText}>No file selected</Text>
+            )}
           </View>
         </View>
 
@@ -997,21 +1001,11 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     flex: 1,
   },
-  previewImage: {
-    width: 100,
-    height: 100,
-    marginVertical: 10,
-    borderRadius: 8,
-  },
-  filePreview: {
-    marginVertical: 10,
-    padding: 10,
-    backgroundColor: COLORS.gray,
-    borderRadius: 8,
-  },
-  fileName: {
-    ...FONTS.medium,
+  noFileText: {
+    ...FONTS.regular,
     fontSize: SIZES.small,
-    color: COLORS.text,
+    color: COLORS.gray,
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });

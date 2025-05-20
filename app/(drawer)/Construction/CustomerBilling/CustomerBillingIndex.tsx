@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SceneMap, TabView } from "react-native-tab-view";
-import { COLORS } from "../../../../constants/theme"; // Adjust p
+import { COLORS } from "../../../../constants/theme";
 import customerBillingAll from "./customerBillingAll";
 import customerBillingPending from "./customerBillingPending";
 
@@ -53,7 +53,7 @@ export default CustomerBillingIndex;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background || "#fff",
+    backgroundColor: "#fff",
     // justifyContent: "center",
   },
   title: {
