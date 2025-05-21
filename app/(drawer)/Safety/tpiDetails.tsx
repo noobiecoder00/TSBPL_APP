@@ -108,10 +108,14 @@ const TpiDetails = () => {
     message: string;
     type: "success" | "error" | "info";
     onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
   }>({
     visible: false,
     message: "",
     type: "info",
+    redirect: false,
+    redirectPath: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -359,11 +363,10 @@ const TpiDetails = () => {
           visible: true,
           message: response.data.message,
           type: "success",
+          redirect: true,
+          redirectPath: "/(drawer)/Safety/tpiExpiry",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
-            setTimeout(() => {
-              router.push("/(drawer)/home");
-            }, 500);
           },
         });
       } else {

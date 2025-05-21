@@ -106,7 +106,9 @@ const dailyProjectAll = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(
+          `/Construction/DailyProjectProgressEntry/dailyProjectDetails?id=${item.id}`
+        );
       }}
       activeOpacity={0.85}
     >

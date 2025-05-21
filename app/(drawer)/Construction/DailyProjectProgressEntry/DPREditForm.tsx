@@ -7,9 +7,9 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
-import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -65,60 +65,88 @@ interface UserData {
 }
 
 interface ManpowerState {
-  siteInCharge: string;
+  "Site In Charge": string;
   Engineer: string;
   Supervisor: string;
-  SafetyOfficer: string;
+  "Safety Officer": string;
   Fitter: string;
   Rigger: string;
   Electrician: string;
-  Operators_Drivers: string;
+  "Operators & Drivers": string;
   Helper: string;
 }
 
+interface VendorDropdown {
+  disabled: boolean;
+  group: string | null;
+  selected: boolean;
+  text: string;
+  value: string;
+}
+
 const initialManpowerState: ManpowerState = {
-  siteInCharge: "",
+  "Site In Charge": "",
   Engineer: "",
   Supervisor: "",
-  SafetyOfficer: "",
+  "Safety Officer": "",
   Fitter: "",
   Rigger: "",
   Electrician: "",
-  Operators_Drivers: "",
+  "Operators & Drivers": "",
   Helper: "",
 };
 
-const DailyProjectCreateForm = () => {
-  const dispatch = useDispatch();
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dprDate, setDprDate] = useState(new Date());
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+interface DPREditFormProps {
+  id: number;
+  dprFlowId: number;
+  initialData: {
+    projectName: string;
+    projectNumber: string;
+    projectId: number;
+    subProjectId: number;
+    dprDate: string;
+    totalSupplyWeight: number;
+    keyHighlightProject: string;
+    keyIssuesClient: string;
+    keyIssuesTBSPL: string;
+    remark: string;
+    lostTime: string;
+    manpower: ManpowerState;
+    scopeItems: Array<{
+      id: number;
+      scopeName: string;
+      scopeUOMName: string;
+      scopeQty: number;
+      scopeCummulativeQty: number;
+      scopeCertifiedQty: number;
+      scopeBalancedQty: number;
+      vendorId: number;
+    }>;
+    equipments: Array<{
+      id: number;
+      equipmentName: string;
+      count: number;
+    }>;
   };
+  vendor: VendorDropdown[];
+  isSubmitting: boolean;
+}
 
-  const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
-  const [selectedProjectNo, setSelectedProjectNo] = useState<number | null>(
-    null
-  );
-  const [subProjects, setSubProjects] = useState<SubProject[]>([]);
-  const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
-    null
-  );
-  const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(
-    null
-  );
-  const [subProjectVendors, setSubProjectVendors] = useState<
-    SubProjectVendor[]
-  >([]);
-  const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
+const DPREditForm = ({
+  id,
+  dprFlowId,
+  initialData,
+  vendor,
+  isSubmitting: propIsSubmitting,
+}: DPREditFormProps) => {
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dprDate, setDprDate] = useState(new Date(initialData.dprDate));
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [scopeItems, setScopeItems] = useState<ScopeItem[]>([]);
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting);
+
   const [alert, setAlert] = useState<{
     visible: boolean;
     message: string;
@@ -131,159 +159,56 @@ const DailyProjectCreateForm = () => {
     message: "",
     type: "info",
   });
-  const [keyHighlightProject, setKeyHighlightProject] = useState("");
-  const [keyIssuesClient, setKeyIssuesClient] = useState("");
-  const [keyIssuesTBSPL, setKeyIssuesTBSPL] = useState("");
-  const [remark, setRemark] = useState("");
-  const [lostTime, setLostTime] = useState("");
-  const [manpower, setManpower] = useState<ManpowerState>(initialManpowerState);
-  const [totalSupplyWeight, setTotalSupplyWeight] = useState("");
-  const resetStates = () => {
-    setShowDatePicker(false);
-    setDprDate(new Date());
-    setProjectNos([]);
-    setSelectedProjectNo(null);
-    setSubProjects([]);
-    setSelectedSubProject(null);
-    setProjectDetails(null);
-    setSubProjectVendors([]);
-    setSelectedVendor(null);
-    setScopeItems([]);
-    setEquipments([]);
-    setError(null);
-    setKeyHighlightProject("");
-    setKeyIssuesClient("");
-    setKeyIssuesTBSPL("");
-    setRemark("");
-    setLostTime("");
-    setManpower(initialManpowerState);
-    setTotalSupplyWeight("");
+  const [keyHighlightProject, setKeyHighlightProject] = useState(
+    initialData.keyHighlightProject
+  );
+  const [keyIssuesClient, setKeyIssuesClient] = useState(
+    initialData.keyIssuesClient
+  );
+  const [keyIssuesTBSPL, setKeyIssuesTBSPL] = useState(
+    initialData.keyIssuesTBSPL
+  );
+  const [flowRemarks, setFlowRemarks] = useState("");
+  const [remark, setRemark] = useState(initialData.remark);
+  const [lostTime, setLostTime] = useState(initialData.lostTime);
+  const [manpower, setManpower] = useState<ManpowerState>(initialData.manpower);
+  const [totalSupplyWeight, setTotalSupplyWeight] = useState(
+    initialData.totalSupplyWeight.toString()
+  );
+  const [scopeItems, setScopeItems] = useState<ScopeItem[]>(
+    initialData.scopeItems.map((item) => ({
+      id: item.id,
+      scopes: item.scopeName,
+      uom: item.scopeUOMName,
+      scopeQuantity: item.scopeQty,
+      scopeCumQuantity: item.scopeCummulativeQty,
+      certifiedQty: item.scopeCertifiedQty,
+      balanceQty: item.scopeBalancedQty,
+      selectedVendor: item.vendorId,
+    }))
+  );
+  const [equipments, setEquipments] = useState<Equipment[]>(
+    initialData.equipments.map((eq) => ({
+      id: eq.id,
+      equipmentName: eq.equipmentName,
+      count: eq.count,
+    }))
+  );
+  const [subProjectVendors, setSubProjectVendors] = useState<
+    SubProjectVendor[]
+  >([]);
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   };
 
   const onDprDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDprDate(selectedDate);
-    }
-  };
-
-  const fetchProjectNos = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(API_ENDPOINTS.PROJECT_NO.LIST);
-      setProjectNos(response.data);
-    } catch (error) {
-      console.error("Error fetching project nos:", error);
-      setError("Failed to load project nos. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchSubProjects = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_NO.LIST}?id=${selectedProjectNo}`
-      );
-      console.log("response", response.data);
-      // [{"id":2,"buildingName":"Ta"}]
-      setSubProjects(response.data);
-    } catch (error) {
-      console.error("Error fetching sub projects:", error);
-      setError("Failed to load sub projects. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchProjectDetails = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `/api/SubProjectDetails?id=${selectedSubProject}`
-      );
-      console.log("response", response.data);
-      //   [
-      //     {
-      //         "projectName": "TATA STEEL (JSR)",
-      //         "doNumber": "7",
-      //         "noOfBuilding": 711,
-      //         "buildingName": "Karyn Hutchinson"
-      //     }
-      // ]
-      setProjectDetails(response.data[0]);
-    } catch (error) {
-      console.error("Error fetching project details:", error);
-      setError("Failed to load project details. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchSubProjectVendors = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_VENDOR.LIST}?id=${selectedSubProject}`
-      );
-      //[{"id":5,"vendorDetails":"Vendor 2 (Tana Bass)"}]
-      setSubProjectVendors(response.data);
-    } catch (error) {
-      console.error("Error fetching sub project vendors:", error);
-      setError("Failed to load sub project vendors. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchScopeItems = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_SCOPE.LIST}?id=${selectedSubProject}`
-      );
-      if (response.data.success) {
-        const items = response.data.data.map((item: any) => ({
-          ...item,
-          certifiedQty: 0,
-          balanceQty: item.scopeQuantity,
-          selectedVendor: null,
-        }));
-        setScopeItems(items);
-      }
-    } catch (error) {
-      console.error("Error fetching scope items:", error);
-      setError("Failed to load scope items. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchEquipments = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_EQUIPMENT.LIST}?id=${selectedSubProject}`
-      );
-      console.log("response", response.data);
-      // Handle direct array response
-      if (Array.isArray(response.data)) {
-        setEquipments(response.data);
-      } else {
-        setEquipments([]);
-      }
-    } catch (error) {
-      console.error("Error fetching equipments:", error);
-      setError("Failed to load equipments. Please try again.");
-    } finally {
-      dispatch(hideLoading());
     }
   };
 
@@ -314,26 +239,7 @@ const DailyProjectCreateForm = () => {
     );
   };
 
-  const loadUserData = async () => {
-    try {
-      const userDataString = await AsyncStorage.getItem("userData");
-      if (userDataString) {
-        setUserData(JSON.parse(userDataString));
-      }
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
-  };
-
   const validateForm = () => {
-    if (!selectedProjectNo) {
-      setError("Please select a project number.");
-      return false;
-    }
-    if (!selectedSubProject) {
-      setError("Please select a sub project.");
-      return false;
-    }
     if (!dprDate) {
       setError("Please select a DPR date.");
       return false;
@@ -407,71 +313,56 @@ const DailyProjectCreateForm = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleUpdate = async () => {
     if (!validateForm()) {
       return;
     }
 
-    if (!userData?.id) {
-      console.log("Waiting for user data to be loaded...");
-      return;
-    }
-
     try {
-      setIsSubmitting(true);
       dispatch(showLoading());
-
       const formattedDate = dprDate.toISOString().split("T")[0];
 
       const payload = {
-        Id: 0,
-        ProjectId: selectedProjectNo || 0,
-        subProjectId: selectedSubProject || 0,
+        Id: id.toString(),
         DPR_Date: formattedDate,
-        LostTime: lostTime,
-        remark: remark,
+        TotalSupplyWeight: totalSupplyWeight,
         keyHighlightProject: keyHighlightProject,
         keyIssuesClient: keyIssuesClient,
         keyIssuesTBSPL: keyIssuesTBSPL,
-        siteInCharge: manpower.siteInCharge,
-        Engineer: manpower.Engineer,
-        Supervisor: manpower.Supervisor,
-        SafetyOfficer: manpower.SafetyOfficer,
-        TotalSupplyWeight: parseFloat(totalSupplyWeight),
-        Fitter: manpower.Fitter,
-        Rigger: manpower.Rigger,
-        Electrician: manpower.Electrician,
-        Operators_Drivers: manpower.Operators_Drivers,
-        Helper: manpower.Helper,
-        CreatedBy: userData?.id
+        remark: remark,
+        LostTime: lostTime,
+        siteInCharge: manpower["Site In Charge"],
+        Engineer: manpower["Engineer"],
+        Supervisor: manpower["Supervisor"],
+        SafetyOfficer: manpower["Safety Officer"],
+        Fitter: manpower["Fitter"],
+        Rigger: manpower["Rigger"],
+        Electrician: manpower["Electrician"],
+        Operators_Drivers: manpower["Operators & Drivers"],
+        Helper: manpower["Helper"],
+        UpdatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
-        UpdatedBy: "",
-        DPR_Flow_Id: null,
-        DPR_FlowRemarks: "",
+        DPR_Flow_Id: dprFlowId.toString(),
+        DPR_FlowRemarks: flowRemarks,
         Scopes: scopeItems.map((item) => ({
-          Id: item.id,
-          RowId: item.id,
-          ScopeId: item.id,
-          ScopeName: item.scopes,
-          VendorId: item.selectedVendor || 0,
+          RowId: item.id.toString(),
+          VendorId: item.selectedVendor?.toString() || "0",
           ScopeQty: item.scopeQuantity,
           scopeCumQTY: item.scopeCumQuantity,
           ScopeQtyInput: item.certifiedQty || 0,
           ScopeBalancedQty: item.balanceQty || 0,
         })),
         Equipments: equipments.map((equipment) => ({
-          Id: equipment.id,
-          EqpId: equipment.id,
-          EquipmentId: equipment.id,
-          EquipmentQtyInput: equipment.count || 0,
+          EqpId: equipment.id.toString(),
+          EquipmentQtyInput: equipment.count?.toString() || "0",
         })),
       };
 
-      console.log("payload", payload);
+      console.log(payload);
 
       const response = await httpClient.post(
-        API_ENDPOINTS.DPR_CREATE.CREATE,
+        API_ENDPOINTS.DPR_UPDATE.UPDATE,
         payload
       );
 
@@ -484,51 +375,45 @@ const DailyProjectCreateForm = () => {
           redirectPath:
             "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex",
           onClose: () => {
-            resetStates();
+            setAlert((prev) => ({ ...prev, visible: false }));
           },
         });
       } else {
         setAlert({
           visible: true,
-          message: response.data.message || "Failed to submit form",
+          message: response.data.message || "Failed to update form",
           type: "error",
+          redirect: true,
+          redirectPath:
+            "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex",
         });
       }
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Error updating form:", error);
       setAlert({
         visible: true,
-        message: "Failed to submit form. Please try again.",
+        message: "Failed to update form. Please try again.",
         type: "error",
       });
     } finally {
       dispatch(hideLoading());
-      setIsSubmitting(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      resetStates();
-      loadUserData();
-      fetchProjectNos();
-    }, [])
-  );
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
 
   useEffect(() => {
-    if (selectedProjectNo) {
-      fetchSubProjects();
-    }
-  }, [selectedProjectNo]);
-
-  useEffect(() => {
-    if (selectedSubProject) {
-      fetchProjectDetails();
-      fetchSubProjectVendors();
-      fetchScopeItems();
-      fetchEquipments();
-    }
-  }, [selectedSubProject]);
+    loadUserData();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
@@ -537,68 +422,21 @@ const DailyProjectCreateForm = () => {
         <Text style={styles.sectionTitle}>Building Details</Text>
         <View style={styles.formGroup}>
           <Text style={styles.label}>Project Number</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedProjectNo}
-              onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="-- Select Project --" value={null} />
-              {projectNos.map((projectNo) => (
-                <Picker.Item
-                  key={projectNo.value}
-                  label={projectNo.text}
-                  value={projectNo.value}
-                />
-              ))}
-            </Picker>
-          </View>
+          <TextInput
+            style={[styles.input, styles.disabledInput]}
+            value={initialData?.projectNumber}
+            editable={false}
+          />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Sub Project</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedSubProject}
-              onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="-- Select Sub Project --" value={null} />
-              {subProjects.map((subProject) => (
-                <Picker.Item
-                  key={subProject.id}
-                  label={subProject.buildingName}
-                  value={subProject.id}
-                />
-              ))}
-            </Picker>
-          </View>
+          <Text style={styles.label}>Name of Project</Text>
+          <TextInput
+            style={[styles.input, styles.disabledInput]}
+            value={initialData?.projectName}
+            editable={false}
+          />
         </View>
-
-        {projectDetails && (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Name of Project: </Text>
-              <Text style={styles.infoValue}>{projectDetails.projectName}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>DO Number: </Text>
-              <Text style={styles.infoValue}>{projectDetails.doNumber}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total No. of Buildings: </Text>
-              <Text style={styles.infoValue}>
-                {projectDetails.noOfBuilding}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Building Name(s): </Text>
-              <Text style={styles.infoValue}>
-                {projectDetails.buildingName}
-              </Text>
-            </View>
-          </View>
-        )}
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>DPR Date *</Text>
@@ -647,12 +485,12 @@ const DailyProjectCreateForm = () => {
               <Text style={styles.label}>Vendor Code *</Text>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={item.selectedVendor}
+                  selectedValue={item.selectedVendor?.toString()}
                   onValueChange={(value) => {
                     setScopeItems((prevItems) =>
                       prevItems.map((prevItem) =>
                         prevItem.id === item.id
-                          ? { ...prevItem, selectedVendor: value }
+                          ? { ...prevItem, selectedVendor: Number(value) }
                           : prevItem
                       )
                     );
@@ -660,12 +498,8 @@ const DailyProjectCreateForm = () => {
                   style={styles.picker}
                 >
                   <Picker.Item label="Select Vendor" value={null} />
-                  {subProjectVendors.map((vendor) => (
-                    <Picker.Item
-                      key={vendor.id}
-                      label={vendor.vendorDetails}
-                      value={vendor.id}
-                    />
+                  {vendor.map((v) => (
+                    <Picker.Item key={v.value} label={v.text} value={v.value} />
                   ))}
                 </Picker>
               </View>
@@ -822,6 +656,7 @@ const DailyProjectCreateForm = () => {
                 style={styles.tableCellInput}
                 keyboardType="numeric"
                 placeholder="0"
+                value={equipment.count?.toString()}
                 onChangeText={(value) =>
                   handleEquipmentCountChange(equipment.id, value)
                 }
@@ -831,24 +666,43 @@ const DailyProjectCreateForm = () => {
         </View>
       </View>
 
+      {/* Remarks Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Remarks</Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Remarks</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Enter Remarks"
+            multiline
+            numberOfLines={3}
+            value={flowRemarks}
+            onChangeText={(text) => setFlowRemarks(text)}
+          />
+        </View>
+      </View>
+
       {/* Buttons */}
       {isSubmitting ? (
         <View style={styles.buttonContainer}>
-          <CustomButton
-            title="Submitting..."
-            onPress={() => {}}
-            variant="primary"
-          />
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              title="Submitting..."
+              onPress={() => {}}
+              variant="primary"
+            />
+          </View>
         </View>
       ) : (
         <View style={styles.buttonContainer}>
-          <CustomButton
-            title="Submit"
-            onPress={() => {
-              handleSubmit();
-            }}
-            variant="primary"
-          />
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              title="Update"
+              onPress={handleUpdate}
+              variant="primary"
+              disabled={isSubmitting}
+            />
+          </View>
         </View>
       )}
 
@@ -870,7 +724,7 @@ const DailyProjectCreateForm = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 2,
     backgroundColor: COLORS.background,
   },
   dateInput: {
@@ -982,6 +836,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 50,
   },
+  buttonWrapper: {
+    marginTop: 20,
+    marginBottom: 50,
+  },
   datePicker: {
     width: "100%",
   },
@@ -1002,4 +860,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DailyProjectCreateForm;
+export default DPREditForm;

@@ -240,8 +240,8 @@ export default function DrawerLayout() {
           <Drawer.Screen
             name="Construction/DailyProjectProgressEntry/DailyProjectIndex"
             options={{
-              drawerLabel: "Daily Project Progress Entry",
-              title: "Daily Project Progress Entry",
+              drawerLabel: "DPR Entry",
+              title: "DPR Entry",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
               headerRight: () => (
                 <Image
@@ -253,11 +253,12 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
           <Drawer.Screen
             name="Construction/DailyProjectProgressEntry/dailyProjectCreateForm"
             options={{
-              drawerLabel: "Daily Project Progress Entry",
-              title: "Daily Project Progress Entry",
+              drawerLabel: "DPR Entry",
+              title: "DPR Entry",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
               headerRight: () => (
                 <Image
@@ -269,6 +270,35 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
+          <Drawer.Screen
+            name="Construction/DailyProjectProgressEntry/dailyProjectDetails"
+            options={{
+              drawerLabel: "DPR Details",
+              title: "DPR Details",
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/Construction/DailyProjectProgressEntry/DailyProjectIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+            }}
+          />
+
           <Drawer.Screen
             name="Construction/CustomerBilling/CustomerBillingIndex"
             options={{

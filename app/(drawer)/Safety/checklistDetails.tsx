@@ -120,10 +120,14 @@ const ChecklistDetails = () => {
     message: string;
     type: "success" | "error" | "info";
     onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
   }>({
     visible: false,
     message: "",
     type: "info",
+    redirect: false,
+    redirectPath: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -147,7 +151,6 @@ const ChecklistDetails = () => {
     useState<FileData | null>(null);
 
   const resetForm = () => {
-    // Reset checklist items while maintaining structure
     const resetChecklist = equipmentCategoryChecklist.map((item) => ({
       ...item,
       result: "",
@@ -454,6 +457,8 @@ const ChecklistDetails = () => {
           visible: true,
           message: response.data.message || "Failed to submit action",
           type: "error",
+          redirect: true,
+          redirectPath: "/(drawer)/Safety/checklist",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
           },
@@ -1032,6 +1037,8 @@ const ChecklistDetails = () => {
         onClose={() => {
           setAlert((prev) => ({ ...prev, visible: false }));
         }}
+        redirect={alert.redirect}
+        redirectPath={alert.redirectPath}
       />
     </ScrollView>
   );

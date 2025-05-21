@@ -1,5 +1,6 @@
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import { Modal, StyleSheet, Text, View } from "react-native";
 import { CustomButton } from "./CustomButton";
@@ -8,7 +9,9 @@ interface CustomAlertProps {
   visible: boolean;
   message: string;
   type: "success" | "error" | "info";
-  onClose: () => void;
+  onClose?: () => void;
+  redirect?: boolean;
+  redirectPath?: string;
 }
 
 export const CustomAlert: React.FC<CustomAlertProps> = ({
@@ -16,6 +19,8 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
   message,
   type,
   onClose,
+  redirect,
+  redirectPath,
 }) => {
   const getIconName = () => {
     switch (type) {
@@ -43,6 +48,15 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
     }
   };
 
+  const handleClose = () => {
+    if (redirect && redirectPath) {
+      router.replace(redirectPath as any);
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
   if (!visible) return null;
 
   return (
@@ -50,7 +64,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
       transparent
       visible={visible}
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
         <View style={styles.alertContainer}>
@@ -59,7 +73,7 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
             {message}
           </Text>
           <View style={styles.buttonContainer}>
-            <CustomButton title="OK" onPress={onClose} variant="primary" />
+            <CustomButton title="OK" onPress={handleClose} variant="primary" />
           </View>
         </View>
       </View>

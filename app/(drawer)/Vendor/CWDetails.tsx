@@ -615,7 +615,7 @@ export default function CWDetails() {
           type: "success",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
-            router.replace("/Vendor");
+            router.replace("/(drawer)/Vendor");
           },
         });
       } else {
@@ -796,7 +796,7 @@ export default function CWDetails() {
           type: "success",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
-            router.replace("/Vendor");
+            router.push("/(drawer)/Vendor");
           },
         });
       } else {

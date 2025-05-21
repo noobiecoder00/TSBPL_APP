@@ -63,26 +63,50 @@ SAFETY: {
     LIST: "/api/SubProjectList",
   },
 
-    // Sub Project Scope
-    SUB_PROJECT_SCOPE: {
-      LIST: "/api/SubProjectScope",
-    },
+  // Sub Project Scope
+  SUB_PROJECT_SCOPE: {
+    LIST: "/api/SubProjectScope",
+  },
 
-    // Sub Project Vendor
-    SUB_PROJECT_VENDOR: {
-      LIST: "/api/SubProjectVendorList",
-    },
-  
-    // Sub Project Equipment
-    SUB_PROJECT_EQUIPMENT: {
-      LIST: "/api/SubProjectEquipments",
-    },
-  
-    // DPR Create
-    DPR_CREATE: {
-      CREATE: "/api/DailyProjectProgressEntryCreate",
-    },
+  // Sub Project Vendor
+  SUB_PROJECT_VENDOR: {
+    LIST: "/api/SubProjectVendorList",
+  },
 
+  // Sub Project Equipment
+  SUB_PROJECT_EQUIPMENT: {
+    LIST: "/api/SubProjectEquipments",
+  },
+
+  // DPR Create
+  DPR_CREATE: {
+    CREATE: "/api/DailyProjectProgressEntryCreate",
+  },
+
+  // DPR Details
+  DPR_DETAILS: {
+    DETAILS: "/api/DPRbill/details",
+  },
+
+  // DPR Flow Action
+  DPR_FLOW_ACTION: {
+    FLOW_ACTION: "/api/DPR_FlowAction",
+  },
+
+  // DPR Update
+  DPR_UPDATE: {
+    UPDATE: "/api/DPR_Update",
+  },
+
+  // Customer Billing Create
+  CUSTOMER_BILLING_CREATE: {
+    CREATE: "/api/Customer_Bill_Entry_Create",
+  },
+
+  // Customer Billing Scope
+  CUSTOMER_BILLING_SCOPE: {
+    LIST: "/api/CustomerScope",
+  },
 } as const;
 
 // API Response Types
