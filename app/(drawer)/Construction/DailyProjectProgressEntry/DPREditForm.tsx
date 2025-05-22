@@ -159,6 +159,13 @@ const DPREditForm = ({
     message: "",
     type: "info",
   });
+
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
   const [keyHighlightProject, setKeyHighlightProject] = useState(
     initialData.keyHighlightProject
   );
@@ -421,7 +428,7 @@ const DPREditForm = ({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Building Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Number</Text>
+          <RequiredLabel label="Project Number" />
           <TextInput
             style={[styles.input, styles.disabledInput]}
             value={initialData?.projectNumber}
@@ -430,7 +437,7 @@ const DPREditForm = ({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Name of Project</Text>
+          <RequiredLabel label="Name of Project" />
           <TextInput
             style={[styles.input, styles.disabledInput]}
             value={initialData?.projectName}
@@ -439,7 +446,7 @@ const DPREditForm = ({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>DPR Date *</Text>
+          <RequiredLabel label="DPR Date" />
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDatePicker(true)}
@@ -856,6 +863,9 @@ const styles = StyleSheet.create({
   },
   errorInput: {
     borderColor: "red",
+    color: "red",
+  },
+  required: {
     color: "red",
   },
 });

@@ -55,37 +55,7 @@ const builderBillingAll = () => {
           meId: "0",
         }
       );
-      //   {
-      //     "success": true,
-      //     "message": "Fetched successfully",
-      //     "data": {
-      //         "draw": 2,
-      //         "recordsTotal": 1,
-      //         "recordsFiltered": 1,
-      //         "data": [
-      //             {
-      //                 "serialNo": 1,
-      //                 "sO_Number": "998",
-      //                 "running_Number": "998",
-      //                 "running_Date": "10-05-2025",
-      //                 "projectNo": "BP3-2826",
-      //                 "projectName": "TATA STEEL (JSR)",
-      //                 "subProject": "Karyn Hutchinson",
-      //                 "vendorMaster": "TEST 1 (V0001235)",
-      //                 "regStatus": "IN PROGRESS",
-      //                 "status": "INACTIVE",
-      //                 "pendingWith": [
-      //                     {
-      //                         "name": "Construction Manager",
-      //                         "roleName": "Construction Manager"
-      //                     }
-      //                 ],
-      //                 "createdDateTime": "10-05-2025 06:28 PM",
-      //                 "id": "MQ=="
-      //             }
-      //         ]
-      //     }
-      // }
+
       const items = response.data?.data?.data ?? [];
       setData((prev) => [...prev, ...items]);
       setStart((prev) => prev + PAGE_SIZE);
@@ -108,7 +78,9 @@ const builderBillingAll = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(
+          `/Construction/BuilderBilling/builderBillingDetails?id=${item.id}`
+        );
       }}
       activeOpacity={0.85}
     >

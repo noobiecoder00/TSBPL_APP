@@ -3,8 +3,10 @@ export const COLORS = {
   secondary: "#4A90E2", // Dark blue
   background: "#FFFFFF", // White
   text: "#000000",
-  error: "#FF3B30",
-  success: "#34C759",
+  error: "#dc3545",
+  success: "#198754",
+  warning: "#ffc107",
+  info: "#0dcaf0",
   gray: "#a2a2a3",
   lightGray: "#d3d3d3",
   veryLightGray: "#e5e5e5",

@@ -132,7 +132,9 @@ const builderBillingPending = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(
+          `/Construction/BuilderBilling/builderBillingDetails?id=${item.id}`
+        );
       }}
       activeOpacity={0.85}
     >

@@ -180,6 +180,13 @@ export default function CWForm({
     }));
   };
 
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -247,7 +254,7 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Personal Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Contract Worker Name *</Text>
+          <RequiredLabel label="Contract Worker Name" />
           <TextInput
             style={styles.input}
             placeholder="Enter Contract Worker Name"
@@ -257,7 +264,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Date of Birth *</Text>
+          <RequiredLabel label="Date of Birth" />
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDobPicker(true)}
@@ -280,7 +287,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Date of Joining *</Text>
+          <RequiredLabel label="Date of Joining" />
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDojPicker(true)}
@@ -303,7 +310,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Gender *</Text>
+          <RequiredLabel label="Gender" />
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedGender}
@@ -323,7 +330,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Blood Group *</Text>
+          <RequiredLabel label="Blood Group" />
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedBloodGroup}
@@ -343,7 +350,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Address *</Text>
+          <RequiredLabel label="Address" />
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="Enter Address"
@@ -355,7 +362,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Mobile Number *</Text>
+          <RequiredLabel label="Mobile Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter Mobile Number"
@@ -366,7 +373,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Spouse / Parent Contact Number *</Text>
+          <RequiredLabel label="Spouse / Parent Contact Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter Contact Number"
@@ -379,7 +386,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Aadhaar Number *</Text>
+          <RequiredLabel label="Aadhaar Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter Aadhaar Number"
@@ -394,7 +401,7 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Job & Education Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Education *</Text>
+          <RequiredLabel label="Education" />
           <TextInput
             style={styles.input}
             placeholder="Enter Education"
@@ -404,7 +411,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Vendor Code *</Text>
+          <RequiredLabel label="Vendor Code" />
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedVendor}
@@ -424,7 +431,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Department *</Text>
+          <RequiredLabel label="Department" />
           <TextInput
             style={styles.input}
             placeholder="Enter Department"
@@ -434,7 +441,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Job Designation *</Text>
+          <RequiredLabel label="Job Designation" />
           <TextInput
             style={styles.input}
             placeholder="Enter Designation"
@@ -444,7 +451,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Skill Type *</Text>
+          <RequiredLabel label="Skill Type" />
           <TextInput
             style={styles.input}
             placeholder="Enter Skill Type"
@@ -454,7 +461,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Experience *</Text>
+          <RequiredLabel label="Experience" />
           <TextInput
             style={styles.input}
             placeholder="Enter Experience"
@@ -468,7 +475,7 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Banking Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Bank Name *</Text>
+          <RequiredLabel label="Bank Name" />
           <TextInput
             style={styles.input}
             placeholder="Enter Bank Name"
@@ -478,7 +485,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Bank Account Number *</Text>
+          <RequiredLabel label="Bank Account Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter Bank Account Number"
@@ -495,33 +502,30 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>EPF & ESIC Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>EPF Number *</Text>
+          <RequiredLabel label="EPF Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter EPF Number"
-            keyboardType="numeric"
             value={formData.epfNumber}
             onChangeText={(text) => handleInputChange("epfNumber", text)}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>ESIC Number *</Text>
+          <RequiredLabel label="ESIC Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter ESIC Number"
-            keyboardType="numeric"
             value={formData.esicNumber}
             onChangeText={(text) => handleInputChange("esicNumber", text)}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>UAN Number *</Text>
+          <RequiredLabel label="UAN Number" />
           <TextInput
             style={styles.input}
             placeholder="Enter UAN Number"
-            keyboardType="numeric"
             value={formData.uanNumber}
             onChangeText={(text) => handleInputChange("uanNumber", text)}
           />
@@ -533,7 +537,7 @@ export default function CWForm({
         <Text style={styles.sectionTitle}>Document Uploads</Text>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>CW Profile Photo *</Text>
+          <RequiredLabel label="CW Profile Photo" />
           <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
             <Text style={styles.uploadButtonText}>Choose Photo</Text>
           </TouchableOpacity>
@@ -545,7 +549,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>ID Proof Detail *</Text>
+          <RequiredLabel label="ID Proof Detail" />
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => pickDocument(setSelectedIdProof)}
@@ -560,7 +564,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Medical Examination *</Text>
+          <RequiredLabel label="Medical Examination" />
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => pickDocument(setSelectedMedicalExamination)}
@@ -575,7 +579,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Police Verification Report *</Text>
+          <RequiredLabel label="Police Verification Report" />
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => pickDocument(setSelectedPoliceVerification)}
@@ -594,7 +598,7 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Certifications</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Safety Induction *</Text>
+          <RequiredLabel label="Safety Induction" />
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => pickDocument(setSelectedSafetyInduction)}
@@ -624,7 +628,7 @@ export default function CWForm({
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>First-Aid Training *</Text>
+          <RequiredLabel label="First-Aid Training" />
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => pickDocument(setSelectedFirstAidTraining)}
@@ -643,7 +647,7 @@ export default function CWForm({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Remarks</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Remarks</Text>
+          <RequiredLabel label="Remarks" />
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="Enter Remarks"
@@ -749,5 +753,8 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     fontStyle: "italic",
     marginTop: SIZES.small,
+  },
+  required: {
+    color: "red",
   },
 });

@@ -91,7 +91,7 @@ const initialManpowerState: ManpowerState = {
 const DailyProjectCreateForm = () => {
   const dispatch = useDispatch();
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dprDate, setDprDate] = useState(new Date());
+  const [dprDate, setDprDate] = useState<Date | null>(null);
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -113,6 +113,14 @@ const DailyProjectCreateForm = () => {
   const [subProjectVendors, setSubProjectVendors] = useState<
     SubProjectVendor[]
   >([]);
+
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
+
   const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -130,6 +138,8 @@ const DailyProjectCreateForm = () => {
     visible: false,
     message: "",
     type: "info",
+    redirect: false,
+    redirectPath: "",
   });
   const [keyHighlightProject, setKeyHighlightProject] = useState("");
   const [keyIssuesClient, setKeyIssuesClient] = useState("");
@@ -140,7 +150,7 @@ const DailyProjectCreateForm = () => {
   const [totalSupplyWeight, setTotalSupplyWeight] = useState("");
   const resetStates = () => {
     setShowDatePicker(false);
-    setDprDate(new Date());
+    setDprDate(null);
     setProjectNos([]);
     setSelectedProjectNo(null);
     setSubProjects([]);
@@ -421,10 +431,9 @@ const DailyProjectCreateForm = () => {
       setIsSubmitting(true);
       dispatch(showLoading());
 
-      const formattedDate = dprDate.toISOString().split("T")[0];
+      const formattedDate = dprDate ? dprDate.toISOString().split("T")[0] : "";
 
       const payload = {
-        Id: 0,
         ProjectId: selectedProjectNo || 0,
         subProjectId: selectedSubProject || 0,
         DPR_Date: formattedDate,
@@ -446,9 +455,6 @@ const DailyProjectCreateForm = () => {
         CreatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
-        UpdatedBy: "",
-        DPR_Flow_Id: null,
-        DPR_FlowRemarks: "",
         Scopes: scopeItems.map((item) => ({
           Id: item.id,
           RowId: item.id,
@@ -536,7 +542,7 @@ const DailyProjectCreateForm = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Building Details</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Number</Text>
+          <RequiredLabel label="Project Number" />
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedProjectNo}
@@ -556,7 +562,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Sub Project</Text>
+          <RequiredLabel label="Sub Project" />
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedSubProject}
@@ -601,16 +607,16 @@ const DailyProjectCreateForm = () => {
         )}
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>DPR Date *</Text>
+          <RequiredLabel label="DPR Date" />
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text>{formatDate(dprDate)}</Text>
+            <Text>{dprDate ? formatDate(dprDate) : "Select Date"}</Text>
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker
-              value={dprDate}
+              value={dprDate || new Date()}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
               onChange={onDprDateChange}
@@ -619,7 +625,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Total Supply Weight</Text>
+          <RequiredLabel label="Total Supply Weight" />
           <TextInput
             style={styles.input}
             placeholder="Enter total supply weight"
@@ -644,7 +650,7 @@ const DailyProjectCreateForm = () => {
               />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Vendor Code *</Text>
+              <Text style={styles.label}>Vendor Code</Text>
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={item.selectedVendor}
@@ -721,7 +727,7 @@ const DailyProjectCreateForm = () => {
       {/* Key Highlights Section */}
       <View style={styles.section}>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Highlights - Project</Text>
+          <RequiredLabel label="Key Highlights - Project" />
           <TextInput
             style={styles.textArea}
             multiline
@@ -733,7 +739,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Issues - Client</Text>
+          <RequiredLabel label="Key Issues - Client" />
           <TextInput
             style={styles.textArea}
             multiline
@@ -745,7 +751,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Issues - TBSPL</Text>
+          <RequiredLabel label="Key Issues - TBSPL" />
           <TextInput
             style={styles.textArea}
             multiline
@@ -757,7 +763,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Remark</Text>
+          <RequiredLabel label="Remark" />
           <TextInput
             style={styles.textArea}
             multiline
@@ -769,7 +775,7 @@ const DailyProjectCreateForm = () => {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Lost Time</Text>
+          <RequiredLabel label="Lost Time" />
           <TextInput
             style={styles.input}
             placeholder="Enter lost time"
@@ -998,6 +1004,9 @@ const styles = StyleSheet.create({
   },
   errorInput: {
     borderColor: "red",
+    color: "red",
+  },
+  required: {
     color: "red",
   },
 });

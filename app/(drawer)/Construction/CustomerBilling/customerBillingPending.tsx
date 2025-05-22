@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useDispatch } from "react-redux";
 
-interface DPRListResponse {
+interface CustomerBillingListResponse {
   success: boolean;
   message: string;
   data?: any;
@@ -28,7 +28,7 @@ interface UserData {
   id: string;
 }
 
-const dailyProjectPending = () => {
+const customerBillingPending = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
@@ -54,8 +54,8 @@ const dailyProjectPending = () => {
     dispatch(showLoading());
 
     try {
-      const response = await httpClient.post<DPRListResponse>(
-        API_ENDPOINTS.DAILY_PROJECT.LIST,
+      const response = await httpClient.post<CustomerBillingListResponse>(
+        API_ENDPOINTS.CUSTOMER_BILLING.LIST,
         {
           start,
           length: PAGE_SIZE,
@@ -71,7 +71,7 @@ const dailyProjectPending = () => {
       setStart((prev) => prev + PAGE_SIZE);
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching DPR data:", error);
+      console.error("Error fetching Customer Billing data:", error);
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
@@ -100,7 +100,9 @@ const dailyProjectPending = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(`/Vendor/CWDetails?id=${item.id}`);
+        router.replace(
+          `/(drawer)/Construction/CustomerBilling/customerBillingDetails?id=${item.id}`
+        );
       }}
       activeOpacity={0.85}
     >
@@ -229,4 +231,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default dailyProjectPending;
+export default customerBillingPending;

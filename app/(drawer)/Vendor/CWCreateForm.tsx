@@ -9,10 +9,11 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
+import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Platform,
@@ -72,8 +73,8 @@ export default function CWCreateForm() {
     esicNumber: "",
     uanNumber: "",
   });
-  const [dob, setDob] = useState(new Date());
-  const [doj, setDoj] = useState(new Date());
+  const [dob, setDob] = useState<Date | null>(null);
+  const [doj, setDoj] = useState<Date | null>(null);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [showDojPicker, setShowDojPicker] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -84,15 +85,27 @@ export default function CWCreateForm() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string | null>(
     null
   );
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
   const [alert, setAlert] = useState<{
     visible: boolean;
     message: string;
     type: "success" | "error" | "info";
+    onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
   }>({
     visible: false,
     message: "",
     type: "info",
+    redirect: false,
+    redirectPath: "",
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const genderItems = [
@@ -125,10 +138,34 @@ export default function CWCreateForm() {
   const [selectedFirstAidTraining, setSelectedFirstAidTraining] =
     useState<FileData | null>(null);
 
-  useEffect(() => {
-    fetchVendors();
-    loadUserData();
-  }, []);
+  // useEffect(() => {
+  //   fetchVendors();
+  //   loadUserData();
+  //   resetStates();
+  // }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchVendors();
+      loadUserData();
+      resetStates();
+    }, [])
+  );
+
+  const resetStates = () => {
+    setDob(null);
+    setDoj(null);
+    setSelectedGender(null);
+    setSelectedBloodGroup(null);
+    setSelectedVendor(null);
+    setSelectedPhoto(null);
+    setSelectedIdProof(null);
+    setSelectedMedicalExamination(null);
+    setSelectedPoliceVerification(null);
+    setSelectedSafetyInduction(null);
+    setSelectedWahCertified(null);
+    setSelectedFirstAidTraining(null);
+  };
 
   const fetchVendors = async () => {
     try {
@@ -155,14 +192,16 @@ export default function CWCreateForm() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null) => {
+    if (!date) return "";
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
 
-  const formatDateToSend = (date: Date) => {
+  const formatDateToSend = (date: Date | null) => {
+    if (!date) return "";
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
@@ -281,36 +320,36 @@ export default function CWCreateForm() {
       return false;
     }
 
-    // if (!selectedMedicalExamination) {
-    //   Alert.alert(
-    //     "Validation Error",
-    //     "Medical Examination document is required"
-    //   );
-    //   return false;
-    // }
+    if (!selectedMedicalExamination) {
+      Alert.alert(
+        "Validation Error",
+        "Medical Examination document is required"
+      );
+      return false;
+    }
 
-    // if (!selectedPoliceVerification) {
-    //   Alert.alert("Validation Error", "Police Verification Report is required");
-    //   return false;
-    // }
+    if (!selectedPoliceVerification) {
+      Alert.alert("Validation Error", "Police Verification Report is required");
+      return false;
+    }
 
-    // if (!selectedSafetyInduction) {
-    //   Alert.alert("Validation Error", "Safety Induction document is required");
-    //   return false;
-    // }
+    if (!selectedSafetyInduction) {
+      Alert.alert("Validation Error", "Safety Induction document is required");
+      return false;
+    }
 
-    // if (!selectedWahCertified) {
-    //   Alert.alert("Validation Error", "WAH Certification document is required");
-    //   return false;
-    // }
+    if (!selectedWahCertified) {
+      Alert.alert("Validation Error", "WAH Certification document is required");
+      return false;
+    }
 
-    // if (!selectedFirstAidTraining) {
-    //   Alert.alert(
-    //     "Validation Error",
-    //     "First-Aid Training document is required"
-    //   );
-    //   return false;
-    // }
+    if (!selectedFirstAidTraining) {
+      Alert.alert(
+        "Validation Error",
+        "First-Aid Training document is required"
+      );
+      return false;
+    }
 
     return true;
   };
@@ -437,6 +476,7 @@ export default function CWCreateForm() {
           headers: {
             "Content-Type": "multipart/form-data",
           },
+          timeout: 60000, // 60 seconds
         }
       );
 
@@ -445,6 +485,11 @@ export default function CWCreateForm() {
           visible: true,
           message: response.data.message,
           type: response.data.success ? "success" : "error",
+          redirect: true,
+          redirectPath: "/(drawer)/Vendor",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
         });
         resetForm();
       } else {
@@ -486,8 +531,8 @@ export default function CWCreateForm() {
       esicNumber: "",
       uanNumber: "",
     });
-    setDob(new Date());
-    setDoj(new Date());
+    setDob(null);
+    setDoj(null);
     setSelectedGender(null);
     setSelectedBloodGroup(null);
     setSelectedVendor(null);
@@ -507,7 +552,7 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Details</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Contract Worker Name *</Text>
+            <RequiredLabel label="Contract Worker Name" />
             <TextInput
               style={styles.input}
               placeholder="Enter Contract Worker Name"
@@ -517,16 +562,16 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Date of Birth *</Text>
+            <RequiredLabel label="Date of Birth" />
             <TouchableOpacity
               style={styles.dateInput}
               onPress={() => setShowDobPicker(true)}
             >
-              <Text>{formatDate(dob)}</Text>
+              <Text>{dob ? formatDate(dob) : "Select Date"}</Text>
             </TouchableOpacity>
             {showDobPicker && (
               <DateTimePicker
-                value={dob}
+                value={dob || new Date()}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDobChange}
@@ -535,16 +580,16 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Date of Joining *</Text>
+            <RequiredLabel label="Date of Joining" />
             <TouchableOpacity
               style={styles.dateInput}
               onPress={() => setShowDojPicker(true)}
             >
-              <Text>{formatDate(doj)}</Text>
+              <Text>{doj ? formatDate(doj) : "Select Date"}</Text>
             </TouchableOpacity>
             {showDojPicker && (
               <DateTimePicker
-                value={doj}
+                value={doj || new Date()}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDojChange}
@@ -553,7 +598,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Gender *</Text>
+            <RequiredLabel label="Gender" />
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedGender}
@@ -573,7 +618,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Blood Group *</Text>
+            <RequiredLabel label="Blood Group" />
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedBloodGroup}
@@ -593,7 +638,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Address *</Text>
+            <RequiredLabel label="Address" />
             <TextInput
               style={[styles.input, styles.multilineInput]}
               placeholder="Enter Address"
@@ -605,7 +650,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Mobile Number *</Text>
+            <RequiredLabel label="Mobile Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter Mobile Number"
@@ -616,7 +661,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Spouse / Parent Contact Number *</Text>
+            <RequiredLabel label="Spouse / Parent Contact Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter Contact Number"
@@ -629,7 +674,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Aadhaar Number *</Text>
+            <RequiredLabel label="Aadhaar Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter Aadhaar Number"
@@ -646,7 +691,7 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Job & Education Details</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Education *</Text>
+            <RequiredLabel label="Education" />
             <TextInput
               style={styles.input}
               placeholder="Enter Education"
@@ -656,7 +701,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Vendor Code *</Text>
+            <RequiredLabel label="Vendor Code" />
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedVendor}
@@ -677,7 +722,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Department *</Text>
+            <RequiredLabel label="Department" />
             <TextInput
               style={styles.input}
               placeholder="Enter Department"
@@ -687,7 +732,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Job Designation *</Text>
+            <RequiredLabel label="Job Designation" />
             <TextInput
               style={styles.input}
               placeholder="Enter Designation"
@@ -699,7 +744,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Skill Type *</Text>
+            <RequiredLabel label="Skill Type" />
             <TextInput
               style={styles.input}
               placeholder="Enter Skill Type"
@@ -709,7 +754,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Experience *</Text>
+            <RequiredLabel label="Experience" />
             <TextInput
               style={styles.input}
               placeholder="Enter Experience"
@@ -723,7 +768,7 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Banking Details</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Bank Name *</Text>
+            <RequiredLabel label="Bank Name" />
             <TextInput
               style={styles.input}
               placeholder="Enter Bank Name"
@@ -733,7 +778,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Bank Account Number *</Text>
+            <RequiredLabel label="Bank Account Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter Bank Account Number"
@@ -750,33 +795,30 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>EPF & ESIC Details</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>EPF Number *</Text>
+            <RequiredLabel label="EPF Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter EPF Number"
-              keyboardType="numeric"
               value={formData.epfNumber}
               onChangeText={(value) => handleInputChange("epfNumber", value)}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>ESIC Number *</Text>
+            <RequiredLabel label="ESIC Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter ESIC Number"
-              keyboardType="numeric"
               value={formData.esicNumber}
               onChangeText={(value) => handleInputChange("esicNumber", value)}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>UAN Number *</Text>
+            <RequiredLabel label="UAN Number" />
             <TextInput
               style={styles.input}
               placeholder="Enter UAN Number"
-              keyboardType="numeric"
               value={formData.uanNumber}
               onChangeText={(value) => handleInputChange("uanNumber", value)}
             />
@@ -787,7 +829,7 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Document Uploads</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>CW Profile Photo *</Text>
+            <RequiredLabel label="CW Profile Photo" />
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
               <Text style={styles.uploadButtonText}>Choose Photo</Text>
             </TouchableOpacity>
@@ -799,7 +841,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>ID Proof Detail *</Text>
+            <RequiredLabel label="ID Proof Detail" />
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedIdProof)}
@@ -814,7 +856,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Medical Examination *</Text>
+            <RequiredLabel label="Medical Examination" />
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedMedicalExamination)}
@@ -829,7 +871,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Police Verification Report *</Text>
+            <RequiredLabel label="Police Verification Report" />
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedPoliceVerification)}
@@ -848,7 +890,7 @@ export default function CWCreateForm() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Certifications</Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Safety Induction *</Text>
+            <RequiredLabel label="Safety Induction" />
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedSafetyInduction)}
@@ -863,7 +905,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>WAH Certified *</Text>
+            <Text style={styles.label}>WAH Certified</Text>
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedWahCertified)}
@@ -878,7 +920,7 @@ export default function CWCreateForm() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>First-Aid Training *</Text>
+            <RequiredLabel label="First-Aid Training" />
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={() => pickDocument(setSelectedFirstAidTraining)}
@@ -909,6 +951,8 @@ export default function CWCreateForm() {
           message={alert.message}
           type={alert.type}
           onClose={() => setAlert((prev) => ({ ...prev, visible: false }))}
+          redirect={alert.redirect}
+          redirectPath={alert.redirectPath}
         />
       </ScrollView>
       <Loader />
@@ -1007,5 +1051,8 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     fontStyle: "italic",
     textAlign: "center",
+  },
+  required: {
+    color: "red",
   },
 });

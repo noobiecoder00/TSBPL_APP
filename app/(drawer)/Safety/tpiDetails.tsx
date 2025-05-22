@@ -81,7 +81,7 @@ const TpiDetails = () => {
   const { id } = useLocalSearchParams();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tpiExpiryDate, setTpiExpiryDate] = useState(new Date());
+  const [tpiExpiryDate, setTpiExpiryDate] = useState<Date | null>(null);
   const [isChecklistExpanded, setIsChecklistExpanded] = useState(false);
   const [isChecked, setIsChecked] = useState(true);
   const router = useRouter();
@@ -102,6 +102,13 @@ const TpiDetails = () => {
   const [proofUploaded, setProofUploaded] = useState<FileData[]>([]);
 
   const [tpiInfoDetails, setTpiInfoDetails] = useState<TpiChecklist[]>([]);
+
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
 
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -135,7 +142,7 @@ const TpiDetails = () => {
     useState<FileData | null>(null);
 
   const resetForm = () => {
-    setTpiExpiryDate(new Date());
+    setTpiExpiryDate(null);
     setSelectedTpiDocument(null);
     setTpiFormData({
       equipmentId: "",
@@ -317,7 +324,7 @@ const TpiDetails = () => {
 
       const formDataToSend = {
         EquipmentId: equipmentDetails.id || "",
-        TPIExpiryDate: formatDateToSend(tpiExpiryDate),
+        TPIExpiryDate: tpiExpiryDate ? formatDateToSend(tpiExpiryDate) : "",
         CreatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
@@ -404,7 +411,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Reference No</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Reference No"
             value={equipmentDetails.referenceNo}
             editable={false}
@@ -414,7 +421,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Equipment Category</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Equipment Category"
             value={equipmentDetails.equipmentCategory}
             editable={false}
@@ -424,7 +431,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Equipment Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Equipment Name"
             value={equipmentDetails.equipmentName}
             editable={false}
@@ -434,7 +441,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Frequency</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.frequency}
             editable={false}
           />
@@ -443,7 +450,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Zone</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.zone}
             editable={false}
           />
@@ -452,7 +459,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Location</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.location}
             editable={false}
           />
@@ -465,7 +472,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Alert (Email/SMS)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.alert}
             editable={false}
           />
@@ -474,7 +481,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Proof</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.proof}
             editable={false}
           />
@@ -498,7 +505,7 @@ const TpiDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Status</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.status}
             editable={false}
           />
@@ -758,7 +765,7 @@ const TpiDetails = () => {
                       <View style={styles.formGroup}>
                         <Text style={styles.label}>Remarks</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, styles.disabledInput]}
                           value={parent.remarks || ""}
                           editable={false}
                         />
@@ -768,7 +775,7 @@ const TpiDetails = () => {
                       <View style={styles.formGroup}>
                         <Text style={styles.label}>Date of Inspection</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, styles.disabledInput]}
                           value={
                             parent.dateofInspection
                               ? new Date(
@@ -814,16 +821,18 @@ const TpiDetails = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>TPI</Text>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Select TPI Expiry Date *</Text>
+          <RequiredLabel label="Select TPI Expiry Date" />
           <TouchableOpacity
             style={styles.dateInput}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text>{formatDate(tpiExpiryDate)}</Text>
+            <Text>
+              {tpiExpiryDate ? formatDate(tpiExpiryDate) : "Select Date"}
+            </Text>
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker
-              value={tpiExpiryDate}
+              value={tpiExpiryDate || new Date()}
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
               onChange={onTpiExpiryDateChange}
@@ -862,6 +871,8 @@ const TpiDetails = () => {
         onClose={() => {
           setAlert((prev) => ({ ...prev, visible: false }));
         }}
+        redirect={alert.redirect}
+        redirectPath={alert.redirectPath}
       />
     </ScrollView>
   );
@@ -1000,7 +1011,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
+  disabledInput: {
+    backgroundColor: "#f5f5f5",
+    color: "#666",
+    padding: 12,
+  },
   disabledCheckbox: {
     opacity: 0.6,
   },
@@ -1105,5 +1120,8 @@ const styles = StyleSheet.create({
   },
   inlineProofIconItem: {
     marginRight: 8,
+  },
+  required: {
+    color: "red",
   },
 });

@@ -1,13 +1,23 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import { CustomAlert } from "@/components/CustomAlert";
 import { CustomButton } from "@/components/CustomButton";
+import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "@react-navigation/native";
+import { Buffer } from "buffer";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useDispatch } from "react-redux";
 
@@ -79,14 +89,24 @@ const CustomerBillingCreateForm = () => {
     visible: false,
     message: "",
     type: "info",
+    redirect: false,
+    redirectPath: "",
   });
+
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
+
   const resetStates = () => {
-    setShowDatePicker(false);
     setProjectNos([]);
     setSelectedProjectNo(null);
     setSubProjects([]);
     setSelectedSubProject(null);
     setProjectDetails(null);
+    setScopeItems([]);
   };
 
   const fetchProjectNos = async () => {
@@ -193,24 +213,24 @@ const CustomerBillingCreateForm = () => {
 
   const validateForm = () => {
     if (!selectedProjectNo) {
-      setError("Please select a project number.");
+      Alert.alert("Please select a project number.");
       return false;
     }
     if (!selectedSubProject) {
-      setError("Please select a sub project.");
+      Alert.alert("Please select a sub project.");
       return false;
     }
 
     // Validate scope items
     for (const item of scopeItems) {
       if (!item.certifiedQty || item.certifiedQty <= 0) {
-        setError(
+        Alert.alert(
           `Please enter certified quantity for scope item: ${item.scopes}`
         );
         return false;
       }
       if (item.certifiedQty > item.scopeQuantity) {
-        setError(
+        Alert.alert(
           `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
         );
         return false;
@@ -235,21 +255,14 @@ const CustomerBillingCreateForm = () => {
       dispatch(showLoading());
 
       const payload = {
-        Id: 0,
         ProjectId: selectedProjectNo || 0,
         subProjectId: selectedSubProject || 0,
         CreatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
-        UpdatedBy: "",
-        DPR_Flow_Id: null,
-        DPR_FlowRemarks: "",
         Scopes: scopeItems.map((item) => ({
-          Id: item.id,
-          RowId: item.id,
           ScopeId: item.id,
           ScopeName: item.scopes,
-          VendorId: item.selectedVendor || 0,
           ScopeQty: item.scopeQuantity,
           scopeCumQTY: item.scopeCumQuantity,
           ScopeQtyInput: item.certifiedQty || 0,
@@ -260,7 +273,7 @@ const CustomerBillingCreateForm = () => {
       console.log("payload", payload);
 
       const response = await httpClient.post(
-        API_ENDPOINTS.DPR_CREATE.CREATE,
+        API_ENDPOINTS.CUSTOMER_BILLING_CREATE.CREATE,
         payload
       );
 
@@ -271,7 +284,7 @@ const CustomerBillingCreateForm = () => {
           type: "success",
           redirect: true,
           redirectPath:
-            "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex",
+            "/(drawer)/Construction/CustomerBilling/CustomerBillingIndex",
           onClose: () => {
             resetStates();
           },
@@ -318,156 +331,172 @@ const CustomerBillingCreateForm = () => {
   }, [selectedSubProject]);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Building Details Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Building Details</Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Project Number</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedProjectNo}
-              onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="-- Select Project --" value={null} />
-              {projectNos.map((projectNo) => (
-                <Picker.Item
-                  key={projectNo.value}
-                  label={projectNo.text}
-                  value={projectNo.value}
-                />
-              ))}
-            </Picker>
+    <View style={{ flex: 1 }}>
+      <Loader />
+      <ScrollView style={styles.container}>
+        {/* Building Details Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Building Details</Text>
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Project Number" />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedProjectNo}
+                onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="-- Select Project --" value={null} />
+                {projectNos.map((projectNo) => (
+                  <Picker.Item
+                    key={projectNo.value}
+                    label={projectNo.text}
+                    value={projectNo.value}
+                  />
+                ))}
+              </Picker>
+            </View>
           </View>
+
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Sub Project" />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedSubProject}
+                onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="-- Select Sub Project --" value={null} />
+                {subProjects.map((subProject) => (
+                  <Picker.Item
+                    key={subProject.id}
+                    label={subProject.buildingName}
+                    value={subProject.id}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {projectDetails && (
+            <View style={styles.infoContainer}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Name of Project: </Text>
+                <Text style={styles.infoValue}>
+                  {projectDetails.projectName}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>DO Number: </Text>
+                <Text style={styles.infoValue}>{projectDetails.doNumber}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Total No. of Buildings: </Text>
+                <Text style={styles.infoValue}>
+                  {projectDetails.noOfBuilding}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Building Name(s): </Text>
+                <Text style={styles.infoValue}>
+                  {projectDetails.buildingName}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Sub Project</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedSubProject}
-              onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="-- Select Sub Project --" value={null} />
-              {subProjects.map((subProject) => (
-                <Picker.Item
-                  key={subProject.id}
-                  label={subProject.buildingName}
-                  value={subProject.id}
+        {/* Scope Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SCOPE</Text>
+          {scopeItems.map((item) => (
+            <View key={item.id} style={styles.scopeItemContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Scope Item</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={`${item.scopes} (${item.uom})`}
+                  editable={false}
                 />
-              ))}
-            </Picker>
-          </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Scope Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.scopeQuantity.toString()}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Cumulative Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.scopeCumQuantity.toString()}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Certified Qty</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                      ? styles.errorInput
+                      : null,
+                  ]}
+                  value={item.certifiedQty?.toString() || ""}
+                  onChangeText={(value) =>
+                    handleCertifiedQtyChange(item.id, value)
+                  }
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Balance Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.balanceQty?.toString() || "0"}
+                  editable={false}
+                />
+              </View>
+            </View>
+          ))}
         </View>
 
-        {projectDetails && (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Name of Project: </Text>
-              <Text style={styles.infoValue}>{projectDetails.projectName}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>DO Number: </Text>
-              <Text style={styles.infoValue}>{projectDetails.doNumber}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Total No. of Buildings: </Text>
-              <Text style={styles.infoValue}>
-                {projectDetails.noOfBuilding}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Building Name(s): </Text>
-              <Text style={styles.infoValue}>
-                {projectDetails.buildingName}
-              </Text>
-            </View>
+        {/* Buttons */}
+        {isSubmitting ? (
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              title="Submitting..."
+              onPress={() => {}}
+              variant="primary"
+            />
+          </View>
+        ) : (
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              title="Submit"
+              onPress={handleSubmit}
+              variant="primary"
+            />
           </View>
         )}
-      </View>
-
-      {/* Scope Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SCOPE</Text>
-        {scopeItems.map((item) => (
-          <View key={item.id} style={styles.scopeItemContainer}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Scope Item</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={`${item.scopes} (${item.uom})`}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Scope Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.scopeQuantity.toString()}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Cumulative Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.scopeCumQuantity.toString()}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Certified Qty</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  item.certifiedQty && item.certifiedQty > item.scopeQuantity
-                    ? styles.errorInput
-                    : null,
-                ]}
-                value={item.certifiedQty?.toString() || ""}
-                onChangeText={(value) =>
-                  handleCertifiedQtyChange(item.id, value)
-                }
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Balance Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.balanceQty?.toString() || "0"}
-                editable={false}
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Buttons */}
-      {isSubmitting ? (
-        <View style={styles.buttonContainer}>
-          <CustomButton
-            title="Submitting..."
-            onPress={() => {}}
-            variant="primary"
-          />
-        </View>
-      ) : (
-        <View style={styles.buttonContainer}>
-          <CustomButton
-            title="Submit"
-            onPress={handleSubmit}
-            variant="primary"
-          />
-        </View>
-      )}
-    </ScrollView>
+        {/* Add CustomAlert at the end of the component */}
+        <CustomAlert
+          visible={alert.visible}
+          message={alert.message}
+          type={alert.type}
+          onClose={() => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          }}
+          redirect={alert.redirect}
+          redirectPath={alert.redirectPath}
+        />
+      </ScrollView>
+    </View>
   );
 };
 
@@ -602,6 +631,9 @@ const styles = StyleSheet.create({
   },
   errorInput: {
     borderColor: "red",
+    color: "red",
+  },
+  required: {
     color: "red",
   },
 });

@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     DETAILS: "/api/CW/details",
     FLOW_ACTION: "/api/CWMasterFlowAction",
     UPDATE: "/api/CWMasterUpdate",
+    GENERATE_GATEPASS: "/api/cwGatePass",
   },
 
   // Safety endpoints
@@ -51,6 +52,10 @@ SAFETY: {
   // Builder Billing endpoints
   BUILDER_BILLING: {
     LIST: "/api/Builder_Bill_Entry_list",
+    CREATE: "/api/BuilderBillEntryCreate",
+    DETAILS: "/api/Builderbill/details",
+    FLOW_ACTION: "/api/Builder_FlowAction",
+    UPDATE: "/api/Builder_Update",
   },
 
   // Project No.
@@ -100,12 +105,27 @@ SAFETY: {
 
   // Customer Billing Create
   CUSTOMER_BILLING_CREATE: {
-    CREATE: "/api/Customer_Bill_Entry_Create",
+    CREATE: "/api/CustomerBillEntryCreate",
   },
 
   // Customer Billing Scope
   CUSTOMER_BILLING_SCOPE: {
     LIST: "/api/CustomerScope",
+  },
+
+  // Customer Billing Details
+  CUSTOMER_BILLING_DETAILS: {
+    DETAILS: "/api/customerbill/details",
+  },
+
+  // Customer Billing Flow Action
+  CUSTOMER_BILLING_FLOW_ACTION: {
+    FLOW_ACTION: "/api/Customer_FlowAction",
+  },
+
+  // Customer Billing Update
+  CUSTOMER_BILLING_UPDATE: {
+    UPDATE: "/api/Customer_Update",
   },
 } as const;
 

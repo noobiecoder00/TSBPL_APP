@@ -30,7 +30,7 @@ interface ForgotPasswordResponse {
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("Asdfghjkl@123");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
@@ -79,6 +79,8 @@ export default function LoginScreen() {
           locationIds: response.data.userInfo.locationIds,
           accessibleActions: response.data.userInfo.accessibleActions,
         };
+
+        console.log("userData : ", userData);
 
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
         router.replace("/(drawer)/home");

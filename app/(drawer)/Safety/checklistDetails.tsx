@@ -147,6 +147,13 @@ const ChecklistDetails = () => {
     tpiExpiryDate: "",
   });
 
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
+
   const [selectedTpiDocument, setSelectedTpiDocument] =
     useState<FileData | null>(null);
 
@@ -444,14 +451,12 @@ const ChecklistDetails = () => {
           visible: true,
           message: response.data.message,
           type: "success",
+          redirect: true,
+          redirectPath: "/(drawer)/Safety/checklist",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
           },
         });
-        // Direct navigation after successful submission
-        setTimeout(() => {
-          router.push("/(drawer)/home");
-        }, 500);
       } else {
         setAlert({
           visible: true,
@@ -487,7 +492,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Reference No</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Reference No"
             value={equipmentDetails.referenceNo}
             editable={false}
@@ -497,7 +502,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Equipment Category</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Equipment Category"
             value={equipmentDetails.equipmentCategory}
             editable={false}
@@ -507,7 +512,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Equipment Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Enter Equipment Name"
             value={equipmentDetails.equipmentName}
             editable={false}
@@ -517,7 +522,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Frequency</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.frequency}
             editable={false}
           />
@@ -526,7 +531,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Zone</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.zone}
             editable={false}
           />
@@ -535,7 +540,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Location</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.location}
             editable={false}
           />
@@ -548,7 +553,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Alert (Email/SMS)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.alert}
             editable={false}
           />
@@ -557,7 +562,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Proof</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.proof}
             editable={false}
           />
@@ -581,7 +586,7 @@ const ChecklistDetails = () => {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Status</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             value={equipmentDetails.status}
             editable={false}
           />
@@ -841,7 +846,7 @@ const ChecklistDetails = () => {
                       <View style={styles.formGroup}>
                         <Text style={styles.label}>Remarks</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, styles.disabledInput]}
                           value={parent.remarks || ""}
                           editable={false}
                         />
@@ -851,7 +856,7 @@ const ChecklistDetails = () => {
                       <View style={styles.formGroup}>
                         <Text style={styles.label}>Date of Inspection</Text>
                         <TextInput
-                          style={styles.input}
+                          style={[styles.input, styles.disabledInput]}
                           value={
                             parent.dateofInspection
                               ? new Date(
@@ -904,7 +909,7 @@ const ChecklistDetails = () => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Checklist Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.disabledInput]}
                 value={checklist.checkList}
                 editable={false}
               />
@@ -1168,7 +1173,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
-
+  disabledInput: {
+    backgroundColor: "#f5f5f5",
+    color: "#666",
+    padding: 12,
+  },
   customCheckbox: {
     width: 20,
     height: 20,
@@ -1289,5 +1298,32 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     marginBottom: 20,
+  },
+  successHeader: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  infoHeader: {
+    backgroundColor: COLORS.info,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  errorHeader: {
+    backgroundColor: COLORS.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningHeader: {
+    backgroundColor: COLORS.warning,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  required: {
+    color: "red",
   },
 });

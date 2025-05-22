@@ -1168,7 +1168,17 @@ export default function CWDetails() {
           <>
             {cwMasterFlow.map((flow: any, index: number) => (
               <View key={flow.id}>
-                <TouchableOpacity style={styles.pendingHeader}>
+                <TouchableOpacity
+                  style={
+                    flow.status_to === "approve"
+                      ? styles.successHeader
+                      : flow.status_to === "reject"
+                      ? styles.errorHeader
+                      : flow.status_to === "return"
+                      ? styles.infoHeader
+                      : styles.pendingHeader
+                  }
+                >
                   <Text style={styles.pendingText}>
                     {flow.userMaster.name} ({flow.roleMaster.roleName}) Remarks
                   </Text>
@@ -1544,5 +1554,29 @@ const styles = StyleSheet.create({
     height: 100,
     marginVertical: 10,
     borderRadius: 8,
+  },
+  successHeader: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  infoHeader: {
+    backgroundColor: COLORS.info,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  errorHeader: {
+    backgroundColor: COLORS.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningHeader: {
+    backgroundColor: COLORS.warning,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
 });

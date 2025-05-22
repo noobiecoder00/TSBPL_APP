@@ -157,7 +157,7 @@ interface FormEquipment {
   count: number;
 }
 
-const DailyProjectCreateForm = () => {
+const DailyProjectDetails = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -801,7 +801,19 @@ const DailyProjectCreateForm = () => {
           <>
             {dprMasterFlow.map((flow: any, index: number) => (
               <View key={flow.id} style={{ padding: 10 }}>
-                <TouchableOpacity style={styles.pendingHeader}>
+                <TouchableOpacity
+                  style={
+                    flow.status_to === "approve"
+                      ? styles.successHeader
+                      : flow.status_to === "reject"
+                      ? styles.errorHeader
+                      : flow.status_to === "return"
+                      ? styles.infoHeader
+                      : flow.status_to === "reevaluate"
+                      ? styles.warningHeader
+                      : styles.pendingHeader
+                  }
+                >
                   <Text style={styles.pendingText}>
                     {flow.userMaster.name} ({flow.roleMaster.roleName}) Remarks
                   </Text>
@@ -1271,6 +1283,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
+  successHeader: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  infoHeader: {
+    backgroundColor: COLORS.info,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  errorHeader: {
+    backgroundColor: COLORS.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningHeader: {
+    backgroundColor: COLORS.warning,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
   pendingText: {
     fontWeight: "bold",
     fontSize: 16,
@@ -1295,4 +1331,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DailyProjectCreateForm;
+export default DailyProjectDetails;

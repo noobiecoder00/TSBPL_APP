@@ -98,7 +98,7 @@ const cwPending = () => {
       activeOpacity={0.85}
     >
       <LinearGradient
-        colors={["#f0f0f0", "#dcdcdc", "#c0c0c0"]}
+        colors={["#f0f0f0", "#f0f0f0", "#f0f0f0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}

@@ -1,14 +1,42 @@
 import { store } from "@/app/store/store";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { Drawer } from "expo-router/drawer";
+import React, { useEffect, useState } from "react";
 import { Image, TouchableOpacity } from "react-native";
 import FlashMessage from "react-native-flash-message";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Provider } from "react-redux";
 import { CustomDrawerContent } from "./CustomDrawerContent"; // Adjust path as needed
 
+interface UserData {
+  id: string;
+  accessibleActions: string[];
+}
+
 export default function DrawerLayout() {
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [accessibleActions, setAccessibleActions] = useState<string[]>([]);
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+        console.log("userData : ", userData);
+      }
+      setAccessibleActions(userData?.accessibleActions || []);
+      console.log("Accessible Actions : ", accessibleActions);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
@@ -51,12 +79,13 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
           <Drawer.Screen
             name="Vendor/index"
             options={{
               drawerLabel: "Contractor Worker",
               title: "Contractor Worker",
-              drawerItemStyle: { height: 0 }, // Hide this default item, show via custom drawer
+              drawerItemStyle: { height: 0 },
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -67,12 +96,38 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
           <Drawer.Screen
             name="Vendor/CWCreateForm"
             options={{
               drawerLabel: "CW Create Form",
               title: "CW Create Form",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Vendor")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
+            name="Vendor/cwAttendance/cwAttendanceIndex"
+            options={{
+              drawerLabel: "CW Attendance",
+              title: "CW Attendance",
+              drawerItemStyle: { height: 0 },
               headerLeft: () => (
                 <TouchableOpacity
                   style={{ marginLeft: 15 }}
@@ -329,6 +384,35 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
+          <Drawer.Screen
+            name="Construction/CustomerBilling/customerBillingDetails"
+            options={{
+              drawerLabel: "Customer Bill Details",
+              title: "Customer Bill Details",
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/Construction/CustomerBilling/CustomerBillingIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+            }}
+          />
+
           <Drawer.Screen
             name="Construction/BuilderBilling/BuilderBillingIndex"
             options={{
@@ -356,6 +440,34 @@ export default function DrawerLayout() {
                   resizeMode="contain"
                   tintColor="#fff"
                 />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
+            name="Construction/BuilderBilling/builderBillingDetails"
+            options={{
+              drawerLabel: "Builder Bill Details",
+              title: "Builder Bill Details",
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/Construction/BuilderBilling/BuilderBillingIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
               ),
             }}
           />
