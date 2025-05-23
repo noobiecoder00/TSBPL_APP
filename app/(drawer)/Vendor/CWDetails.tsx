@@ -116,6 +116,8 @@ export default function CWDetails() {
     message: string;
     type: "success" | "error" | "info";
     onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
   }>({
     visible: false,
     message: "",
@@ -794,9 +796,10 @@ export default function CWDetails() {
           visible: true,
           message: response.data.message,
           type: "success",
+          redirect: true,
+          redirectPath: "/(drawer)/Vendor",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
-            router.push("/(drawer)/Vendor");
           },
         });
       } else {
@@ -1432,6 +1435,8 @@ export default function CWDetails() {
             alert.onClose ||
             (() => setAlert((prev) => ({ ...prev, visible: false })))
           }
+          redirect={alert.redirect}
+          redirectPath={alert.redirectPath}
         />
       </ScrollView>
       <Loader />

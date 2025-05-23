@@ -1,16 +1,22 @@
+import { CustomAlert } from "@/components/CustomAlert";
 import Loader from "@/components/Loader";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
+import httpClient from "@/utils/httpClient";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Text, TextInput } from "react-native-paper";
-
+import { useDispatch } from "react-redux";
+import { hideLoading, showLoading } from "../store/loaderSlice";
 interface UserData {
+  id: string;
   name: string;
   pno: string;
   role: string;
+  type: string;
+  force: string;
 }
 
 const ChangePassword = () => {
@@ -20,6 +26,26 @@ const ChangePassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+    onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
+  }>({
+    visible: false,
+    message: "",
+    type: "info",
+  });
+
+  useEffect(() => {
+    if (userData?.force === "Y") {
+      // dont show drawer option
+    }
+  }, [userData]);
 
   const validatePasswords = () => {
     if (newPassword.length < 8) {
@@ -54,22 +80,48 @@ const ChangePassword = () => {
     if (!validatePasswords()) {
       return;
     }
-
+    dispatch(showLoading());
     setLoading(true);
     try {
-      // Dummy API call - replace with your actual API endpoint
-      const response = await axios.post(
-        "https://api.example.com/change-password",
-        {
-          oldPassword,
-          newPassword,
-          userId: userData?.pno,
-        }
-      );
+      let endpoint;
+      if (userData?.force === "Y") {
+        endpoint =
+          userData?.type === "User"
+            ? API_ENDPOINTS.USER.UPDATE_PASSWORD
+            : API_ENDPOINTS.VENDOR.UPDATE_PASSWORD;
+      } else {
+        endpoint =
+          userData?.type === "User"
+            ? API_ENDPOINTS.USER.CHANGE_PASSWORD
+            : API_ENDPOINTS.VENDOR.CHANGE_PASSWORD;
+      }
+
+      const payload = {
+        OldPassword: oldPassword,
+        NewPassword: newPassword,
+        UserId: userData?.id || "",
+      };
+
+      console.log(endpoint, payload);
+
+      const response = await httpClient.put(endpoint, payload);
 
       if (response.data.success) {
+        dispatch(hideLoading());
         // Handle successful password change
-        alert("Password changed successfully");
+        //clear user data
+        await AsyncStorage.removeItem("userData");
+        setUserData(null);
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "success",
+          redirect: true,
+          redirectPath: "/pages/login",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
+        });
         // Clear form
         setOldPassword("");
         setNewPassword("");
@@ -192,6 +244,17 @@ const ChangePassword = () => {
             Change Password
           </Button>
         </View>
+        <CustomAlert
+          visible={alert.visible}
+          message={alert.message}
+          type={alert.type}
+          onClose={
+            alert.onClose ||
+            (() => setAlert((prev) => ({ ...prev, visible: false })))
+          }
+          redirect={alert.redirect}
+          redirectPath={alert.redirectPath}
+        />
       </ScrollView>
     </>
   );

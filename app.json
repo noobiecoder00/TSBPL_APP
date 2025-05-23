@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "permissions": ["CAMERA"],
+    "permissions": [
+      "CAMERA"
+    ],
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -37,12 +39,25 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen",
-      "expo-barcode-scanner"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-splash-screen"
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "scheme": "tsbplapp"
+    "scheme": "tsbplapp",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9d546d98-3ae5-4ad1-be19-1da3ff066847"
+      }
+    }
   }
 }

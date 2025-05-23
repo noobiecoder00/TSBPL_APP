@@ -8,6 +8,10 @@ interface UserData {
   name: string;
   pno: string;
   role: string;
+  type: string;
+  vendorName: string;
+  vendorCode: string;
+  force: string;
 }
 
 export default function Home() {
@@ -29,6 +33,12 @@ export default function Home() {
     loadUserData();
   }, []);
 
+  useEffect(() => {
+    if (userData?.force === "Y") {
+      router.push("/changePwd");
+    }
+  }, [userData]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -40,9 +50,24 @@ export default function Home() {
 
         {userData && (
           <View style={styles.card}>
-            <Text style={styles.userText}>👤 Name: {userData.name}</Text>
-            <Text style={styles.userText}>🆔 PNO: {userData.pno}</Text>
-            <Text style={styles.userText}>🎖️ Role: {userData.role}</Text>
+            {userData.type === "User" && (
+              <>
+                <Text style={styles.userText}>👤 Name: {userData.name}</Text>
+                <Text style={styles.userText}>🆔 PNO: {userData.pno}</Text>
+                <Text style={styles.userText}>🎖️ Role: {userData.role}</Text>
+              </>
+            )}
+            {userData.type === "Vendor" && (
+              <>
+                <Text style={styles.userText}>
+                  🏭 Vendor Name: {userData.vendorName}
+                </Text>
+                <Text style={styles.userText}>
+                  🏭 Vendor Code: {userData.vendorCode}
+                </Text>
+                <Text style={styles.userText}>🏭 Role: {userData.type}</Text>
+              </>
+            )}
           </View>
         )}
       </View>

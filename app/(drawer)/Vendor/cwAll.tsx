@@ -334,8 +334,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   gatepassImage: {
-    borderWidth: 1,
-    borderColor: "red",
     width: "100%",
     height: Dimensions.get("window").height * 0.6,
     marginVertical: 20,

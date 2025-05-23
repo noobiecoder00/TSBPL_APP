@@ -127,11 +127,11 @@ export default function DrawerLayout() {
             options={{
               drawerLabel: "CW Attendance",
               title: "CW Attendance",
-              drawerItemStyle: { height: 0 },
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
               headerLeft: () => (
                 <TouchableOpacity
                   style={{ marginLeft: 15 }}
-                  onPress={() => router.push("/Vendor")}
+                  onPress={() => router.push("/home")}
                 >
                   <Ionicons name="arrow-back-outline" size={24} color="#fff" />
                 </TouchableOpacity>

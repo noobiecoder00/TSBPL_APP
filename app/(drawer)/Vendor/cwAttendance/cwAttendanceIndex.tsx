@@ -1,91 +1,275 @@
-import { COLORS } from "@/constants/theme"; // Adjust path as needed
-import { BarCodeScanner } from "expo-barcode-scanner";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import { CustomAlert } from "@/components/CustomAlert";
+import { API_ENDPOINTS } from "@/constants/apiEndpoints";
+import { COLORS, SIZES } from "@/constants/theme";
+import httpClient from "@/utils/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-} from "react-native";
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
+} from "expo-camera";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useDispatch } from "react-redux";
 
-const routes = [
-  { key: "first", title: "All" },
-  { key: "second", title: "Pending With Me" },
-];
+interface ProjectNo {
+  value: number;
+  text: string;
+}
+
+interface SubProject {
+  id: number;
+  buildingName: string;
+}
+interface UserData {
+  id: string;
+}
 
 const CWAttendance = () => {
   const router = useRouter();
-  const layout = useWindowDimensions();
-  const [index, setIndex] = React.useState(0);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [scanned, setScanned] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
+  const dispatch = useDispatch();
+  const [cameraPermission, requestPermission] = useCameraPermissions();
+  const [isScanning, setIsScanning] = useState(false);
+  const isPermissionGranted = Boolean(cameraPermission?.granted);
+  const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedProjectNo, setSelectedProjectNo] = useState<number | null>(
+    null
+  );
+  const [subProjects, setSubProjects] = useState<SubProject[]>([]);
+  const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+    onClose?: () => void;
+    redirect?: boolean;
+    redirectPath?: string;
+  }>({
+    visible: false,
+    message: "",
+    type: "info",
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      resetStates();
+      loadUserData();
+      fetchProjectNos();
+    }, [])
+  );
 
   useEffect(() => {
-    const getBarCodeScannerPermissions = async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === "granted");
-    };
+    if (selectedProjectNo) {
+      fetchSubProjects();
+    }
+  }, [selectedProjectNo]);
 
-    getBarCodeScannerPermissions();
-  }, []);
-
-  const handleBarCodeScanned = ({
-    type,
-    data,
-  }: {
-    type: string;
-    data: string;
-  }) => {
-    setScanned(true);
-    setShowScanner(false);
-    Alert.alert("QR Code Scanned", `Data: ${data}`);
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
   };
 
-  const scanQrCode = () => {
-    if (hasPermission === null) {
-      Alert.alert(
-        "Permission Required",
-        "Camera permission is required to scan QR codes."
-      );
-      return;
+  const RequiredLabel = ({ label }: { label: string }) => (
+    <Text style={styles.label}>
+      {label}
+      <Text style={styles.required}> *</Text>
+    </Text>
+  );
+
+  const fetchProjectNos = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(API_ENDPOINTS.PROJECT_NO.LIST);
+      setProjectNos(response.data);
+    } catch (error) {
+      console.error("Error fetching project nos:", error);
+      setError("Failed to load project nos. Please try again.");
+    } finally {
+      dispatch(hideLoading());
     }
-    if (hasPermission === false) {
-      Alert.alert(
-        "Permission Denied",
-        "Camera permission is required to scan QR codes."
-      );
-      return;
-    }
-    setScanned(false);
-    setShowScanner(true);
   };
 
-  if (showScanner) {
-    return (
-      <View style={styles.container}>
-        <BarCodeScanner
-          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => setShowScanner(false)}
-        >
-          <Text style={styles.closeButtonText}>Close Scanner</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const fetchSubProjects = async () => {
+    try {
+      dispatch(showLoading());
+      setError(null);
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.SUB_PROJECT_NO.LIST}?id=${selectedProjectNo}`
+      );
+      setSubProjects(response.data);
+    } catch (error) {
+      console.error("Error fetching sub projects:", error);
+      setError("Failed to load sub projects. Please try again.");
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const validateForm = () => {
+    if (!selectedProjectNo) {
+      Alert.alert("Please select a project number.");
+      return false;
+    }
+    if (!selectedSubProject) {
+      Alert.alert("Please select a sub project.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleTakeAttendance = async () => {
+    if (!isPermissionGranted) {
+      const permission = await requestPermission();
+      if (!permission.granted) {
+        return;
+      }
+    }
+    // if (!validateForm()) {
+    //   return;
+    // }
+    setIsScanning(true);
+  };
+
+  const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
+    console.log("Scanned QR Code Data:", data);
+    setIsScanning(false);
+    // Here you can add additional logic to handle the scanned data
+    // dispatch(showLoading());
+
+    // try {
+    //   const response = await httpClient.post(
+    //     API_ENDPOINTS.VENDOR.TAKE_ATTENDANCE,
+    //     {
+    //       cwId: data,
+    //     }
+    //   );
+
+    //   if (response.data.success) {
+    //     setAlert({
+    //       visible: true,
+    //       message: response.data.message,
+    //       type: "success",
+    //       redirect: true,
+    //       redirectPath: "/(drawer)/Vendor/cwAttendance/cwAttendanceIndex",
+    //       onClose: () => {
+    //         setAlert((prev) => ({ ...prev, visible: false }));
+    //       },
+    //     });
+    //   } else {
+    //     setAlert({
+    //       visible: true,
+    //       message: response.data.message || "Failed to submit action",
+    //       type: "error",
+
+    //       onClose: () => {
+    //         setAlert((prev) => ({ ...prev, visible: false }));
+    //       },
+    //     });
+    //   }
+    // } catch (error: any) {
+    //   console.error("Error submitting action:", error);
+    //   setAlert({
+    //     visible: true,
+    //     message: error.response?.data?.message || "Failed to submit action",
+    //     type: "error",
+    //     onClose: () => {
+    //       setAlert((prev) => ({ ...prev, visible: false }));
+    //     },
+    //   });
+    // } finally {
+    //   dispatch(hideLoading());
+    // }
+  };
+
+  const resetStates = () => {
+    setProjectNos([]);
+    setSelectedProjectNo(null);
+    setSubProjects([]);
+    setSelectedSubProject(null);
+    setIsScanning(false);
+  };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={scanQrCode} style={styles.createButton}>
-        <Text style={styles.createButtonText}>Take Attendance</Text>
-      </TouchableOpacity>
+      <View style={styles.formGroup}>
+        <RequiredLabel label="Project Number" />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedProjectNo}
+            onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="-- Select Project --" value={null} />
+            {projectNos.map((projectNo) => (
+              <Picker.Item
+                key={projectNo.value}
+                label={projectNo.text}
+                value={projectNo.value}
+              />
+            ))}
+          </Picker>
+        </View>
+      </View>
+
+      <View style={styles.formGroup}>
+        <RequiredLabel label="Sub Project" />
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedSubProject}
+            onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="-- Select Sub Project --" value={null} />
+            {subProjects.map((subProject) => (
+              <Picker.Item
+                key={subProject.id}
+                label={subProject.buildingName}
+                value={subProject.id}
+              />
+            ))}
+          </Picker>
+        </View>
+      </View>
+      {isScanning ? (
+        <CameraView
+          style={StyleSheet.absoluteFillObject}
+          facing="back"
+          onBarcodeScanned={handleBarcodeScanned}
+        />
+      ) : (
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={handleTakeAttendance}
+        >
+          <Text style={styles.createButtonText}>Take Attendance</Text>
+        </TouchableOpacity>
+      )}
+      <CustomAlert
+        visible={alert.visible}
+        message={alert.message}
+        type={alert.type}
+        onClose={() => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        }}
+        redirect={alert.redirect}
+        redirectPath={alert.redirectPath}
+      />
     </View>
   );
 };
@@ -96,12 +280,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.text || "#333",
-    marginBottom: 10,
+    padding: 16,
   },
   createButton: {
     margin: 16,
@@ -116,17 +295,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  closeButton: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    padding: 15,
-    borderRadius: 8,
+  label: {
+    fontSize: SIZES.medium,
+    fontWeight: "500",
+    marginBottom: 8,
   },
-  closeButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  required: {
+    color: "red",
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
   },
 });

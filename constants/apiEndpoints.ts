@@ -2,7 +2,8 @@
 export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
-    LOGIN: "/TBSPL/Construction/login",
+    USER_LOGIN: "/TBSPL/Construction/login",
+    VENDOR_LOGIN: "/api/vendor/login",
     FORGOT: "/api/User/forgotPassword",
     LOGOUT: "/auth/logout",
     REFRESH_TOKEN: "/auth/refresh-token",
@@ -12,12 +13,18 @@ export const API_ENDPOINTS = {
   USER: {
     PROFILE: "/user/profile",
     UPDATE_PROFILE: "/user/profile/update",
-    CHANGE_PASSWORD: "/user/change-password",
+    CHANGE_PASSWORD: "/api/User/changePassword",
+    UPDATE_PASSWORD: "/api/User/updatePassword",
+    FORGOT_PASSWORD: "/api/User/forgotPassword",
   },
 
   // Vendor endpoints
   VENDOR: {
     LIST: "/api/Vendors",
+    UPDATE_PASSWORD: "/api/Vendor/updatePassword",
+    CHANGE_PASSWORD: "/api/Vendor/changePassword",
+    FORGOT_PASSWORD: "/api/Vendor/forgotPassword",
+    TAKE_ATTENDANCE: "api/CW_Attendance",
   },
 
   // CW endpoints

@@ -8,7 +8,22 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Text, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+interface UserData {
+  name: string;
+  role: string;
+  type: string;
+  vendorName: string;
+  vendorCode: string;
+}
 
 export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
   props
@@ -20,7 +35,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
   const [isConstructionMenuOpen, setIsConstructionMenuOpen] = useState(false);
   const [activeRoute, setActiveRoute] = useState<string | null>(null);
   const [accessibleActions, setAccessibleActions] = useState<string[]>([]);
-
+  const [userData, setUserData] = useState<UserData | null>(null);
   // Animation values
   const vendorMenuHeight = useRef(new Animated.Value(0)).current;
   const safetyMenuHeight = useRef(new Animated.Value(0)).current;
@@ -32,6 +47,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         const userDataString = await AsyncStorage.getItem("userData");
         if (userDataString) {
           const userData = JSON.parse(userDataString);
+          setUserData(userData);
           setAccessibleActions(userData.accessibleActions || []);
         }
       } catch (error) {
@@ -126,6 +142,25 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
 
   return (
     <DrawerContentScrollView {...props}>
+      <View style={styles.userSection}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="person-outline" size={28} color="#FFFFFF" />
+        </View>
+        <View style={styles.userInfoContainer}>
+          {userData?.type === "User" && (
+            <>
+              <Text style={styles.userName}>{userData?.name}</Text>
+              <Text style={styles.userRole}>{userData?.role}</Text>
+            </>
+          )}
+          {userData?.type === "Vendor" && (
+            <>
+              <Text style={styles.userName}>{userData?.vendorName}</Text>
+              <Text style={styles.userRole}>{userData?.vendorCode}</Text>
+            </>
+          )}
+        </View>
+      </View>
       <DrawerItem
         label="Dashboard"
         onPress={() => props.navigation.navigate("home")}
@@ -135,23 +170,16 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         style={getMenuStyle("home")}
       />
 
-      {/* Vendor Menu with Toggle - Only show if user has permissions */}
+      {/* Vendor Menu with Toggle */}
       {(accessibleActions.includes("VendorMaster/Details") ||
         accessibleActions.includes("VendorMaster/Create") ||
         accessibleActions.includes("VendorMaster/Edit") ||
         accessibleActions.includes("VendorMaster/Delete")) && (
         <>
           <TouchableOpacity onPress={toggleVendorMenu}>
-            <View
-              style={[
-                { flexDirection: "row", alignItems: "center", padding: 16 },
-                getMenuStyle("Vendor"),
-              ]}
-            >
+            <View style={[styles.menuItem, getMenuStyle("Vendor")]}>
               <Ionicons name="briefcase-outline" size={24} color="#333" />
-              <Text style={{ marginLeft: 16, fontSize: 16, color: "#333" }}>
-                Vendor
-              </Text>
+              <Text style={styles.menuText}>Vendor</Text>
               <Animated.View
                 style={{
                   marginLeft: "auto",
@@ -181,7 +209,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
               overflow: "hidden",
             }}
           >
-            <View style={{ paddingLeft: 20 }}>
+            <View style={styles.nestedMenuContainer}>
               <DrawerItem
                 label="Contractor Worker"
                 onPress={() => props.navigation.navigate("Vendor/index")}
@@ -198,7 +226,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
                   )
                 }
                 icon={({ color }) => (
-                  <Ionicons name="people-outline" size={20} color={color} />
+                  <Ionicons name="time-outline" size={20} color={color} />
                 )}
                 style={getMenuStyle("Vendor/cwAttendance/cwAttendanceIndex")}
               />
@@ -207,25 +235,18 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         </>
       )}
 
+      {/* Safety Menu with Toggle */}
       {(accessibleActions.includes("TPI_Expiry/Index") ||
         accessibleActions.includes("Checklist/Index")) && (
         <>
-          {/* Safety Menu with Toggle */}
           <TouchableOpacity onPress={toggleSafetyMenu}>
-            <View
-              style={[
-                { flexDirection: "row", alignItems: "center", padding: 16 },
-                getMenuStyle("safety"),
-              ]}
-            >
+            <View style={[styles.menuItem, getMenuStyle("safety")]}>
               <Ionicons
                 name="shield-checkmark-outline"
                 size={24}
                 color="#333"
               />
-              <Text style={{ marginLeft: 16, fontSize: 16, color: "#333" }}>
-                Safety
-              </Text>
+              <Text style={styles.menuText}>Safety</Text>
               <Animated.View
                 style={{
                   marginLeft: "auto",
@@ -255,8 +276,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
               overflow: "hidden",
             }}
           >
-            <View style={{ paddingLeft: 20 }}>
-              {/* @if (accessibleActions.Contains("TPI_Expiry/Index")) */}
+            <View style={styles.nestedMenuContainer}>
               {accessibleActions.includes("TPI_Expiry/Index") && (
                 <DrawerItem
                   label="Pending TPI Expiry"
@@ -267,7 +287,6 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
                   style={getMenuStyle("Safety/tpiExpiry")}
                 />
               )}
-              {/* @if (accessibleActions.Contains("Checklist/Index")) */}
               {accessibleActions.includes("Checklist/Index") && (
                 <DrawerItem
                   label="Pending Check List"
@@ -283,22 +302,15 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         </>
       )}
 
+      {/* Construction Menu with Toggle */}
       {ConstructionActions.some((action) =>
         accessibleActions.includes(action)
       ) && (
         <>
-          {/* Construction Menu with Toggle */}
           <TouchableOpacity onPress={toggleConstructionMenu}>
-            <View
-              style={[
-                { flexDirection: "row", alignItems: "center", padding: 16 },
-                getMenuStyle("construction"),
-              ]}
-            >
+            <View style={[styles.menuItem, getMenuStyle("construction")]}>
               <Ionicons name="construct-outline" size={24} color="#333" />
-              <Text style={{ marginLeft: 16, fontSize: 16, color: "#333" }}>
-                Construction
-              </Text>
+              <Text style={styles.menuText}>Construction</Text>
               <Animated.View
                 style={{
                   marginLeft: "auto",
@@ -328,7 +340,7 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
               overflow: "hidden",
             }}
           >
-            <View style={{ paddingLeft: 20 }}>
+            <View style={styles.nestedMenuContainer}>
               {(accessibleActions.includes(
                 "DailyProjectProgressEntryForm/Create"
               ) ||
@@ -426,7 +438,6 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
       <DrawerItem
         label="Logout"
         onPress={() => {
-          // Clear any stored data if needed
           AsyncStorage.clear();
           router.replace("/pages/login");
         }}
@@ -437,3 +448,56 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
     </DrawerContentScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  userSection: {
+    padding: 20,
+    backgroundColor: "#f8f8f8",
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#007AFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  userInfoContainer: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  userRole: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#666",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  menuText: {
+    marginLeft: 16,
+    fontSize: 16,
+    color: "#333",
+  },
+  nestedMenuContainer: {
+    paddingLeft: 20,
+  },
+  activeMenuStyle: {
+    backgroundColor: "#e6f3ff",
+    borderRadius: 8,
+  },
+});
