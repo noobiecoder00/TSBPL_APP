@@ -10,6 +10,7 @@ import {
   CameraView,
   useCameraPermissions,
 } from "expo-camera";
+import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -32,6 +33,8 @@ const CWAttendance = () => {
   const router = useRouter();
   const dispatch = useDispatch();
   const [cameraPermission, requestPermission] = useCameraPermissions();
+  const [locationPermission, setLocationPermission] =
+    useState<Location.PermissionStatus | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const isPermissionGranted = Boolean(cameraPermission?.granted);
   const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
@@ -45,6 +48,10 @@ const CWAttendance = () => {
   );
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -133,6 +140,22 @@ const CWAttendance = () => {
     return true;
   };
 
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermission(status);
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({});
+        setCurrentLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting location permission:", error);
+    }
+  };
+
   const handleTakeAttendance = async () => {
     if (!isPermissionGranted) {
       const permission = await requestPermission();
@@ -140,61 +163,86 @@ const CWAttendance = () => {
         return;
       }
     }
-    // if (!validateForm()) {
-    //   return;
-    // }
+
+    if (!locationPermission) {
+      await requestLocationPermission();
+      if (!currentLocation) {
+        Alert.alert(
+          "Location Permission Required",
+          "Please grant location permission to take attendance."
+        );
+        return;
+      }
+    }
+
     setIsScanning(true);
   };
 
   const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
     console.log("Scanned QR Code Data:", data);
     setIsScanning(false);
-    // Here you can add additional logic to handle the scanned data
-    // dispatch(showLoading());
 
-    // try {
-    //   const response = await httpClient.post(
-    //     API_ENDPOINTS.VENDOR.TAKE_ATTENDANCE,
-    //     {
-    //       cwId: data,
-    //     }
-    //   );
+    if (!currentLocation) {
+      Alert.alert("Error", "Location not available. Please try again.");
+      return;
+    }
 
-    //   if (response.data.success) {
-    //     setAlert({
-    //       visible: true,
-    //       message: response.data.message,
-    //       type: "success",
-    //       redirect: true,
-    //       redirectPath: "/(drawer)/Vendor/cwAttendance/cwAttendanceIndex",
-    //       onClose: () => {
-    //         setAlert((prev) => ({ ...prev, visible: false }));
-    //       },
-    //     });
-    //   } else {
-    //     setAlert({
-    //       visible: true,
-    //       message: response.data.message || "Failed to submit action",
-    //       type: "error",
+    try {
+      const parsedData = JSON.parse(data);
+      dispatch(showLoading());
 
-    //       onClose: () => {
-    //         setAlert((prev) => ({ ...prev, visible: false }));
-    //       },
-    //     });
-    //   }
-    // } catch (error: any) {
-    //   console.error("Error submitting action:", error);
-    //   setAlert({
-    //     visible: true,
-    //     message: error.response?.data?.message || "Failed to submit action",
-    //     type: "error",
-    //     onClose: () => {
-    //       setAlert((prev) => ({ ...prev, visible: false }));
-    //     },
-    //   });
-    // } finally {
-    //   dispatch(hideLoading());
-    // }
+      const attendanceData = {
+        Vendor_Id: parsedData?.vendorId,
+        CW_Id: parsedData.cwId,
+        Attendance_Taker_IN_Id: userData?.id,
+        In_Lat_Long: `${currentLocation.latitude},${currentLocation.longitude}`,
+        ProjectId: selectedProjectNo,
+        SubProjectId: selectedSubProject,
+        Attendance_Taker_OUT_Id: userData?.id,
+        Out_Lat_Long: `${currentLocation.latitude},${currentLocation.longitude}`,
+      };
+
+      console.log("Attendance Data:", attendanceData);
+      const response = await httpClient.post(
+        API_ENDPOINTS.VENDOR.TAKE_ATTENDANCE,
+        attendanceData
+      );
+
+      console.log("Response:", response.data);
+      if (response.data.success) {
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "success",
+          redirect: true,
+          redirectPath: "/(drawer)/Vendor/cwAttendance/cwAttendanceIndex",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
+        });
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit attendance",
+          type: "error",
+          onClose: () => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error("Error submitting attendance:", error);
+      setAlert({
+        visible: true,
+        message: error.response?.data?.message || "Failed to submit attendance",
+        type: "error",
+        onClose: () => {
+          setAlert((prev) => ({ ...prev, visible: false }));
+        },
+      });
+    } finally {
+      dispatch(hideLoading());
+    }
   };
 
   const resetStates = () => {
