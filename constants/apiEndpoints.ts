@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: "/api/Vendor/changePassword",
     FORGOT_PASSWORD: "/api/Vendor/forgotPassword",
     TAKE_ATTENDANCE: "api/CW_Attendance",
+    VIEW_ATTENDANCE: "/api/CW_Attendance_vendor_list",
   },
 
   // CW endpoints
@@ -35,6 +36,16 @@ export const API_ENDPOINTS = {
     FLOW_ACTION: "/api/CWMasterFlowAction",
     UPDATE: "/api/CWMasterUpdate",
     GENERATE_GATEPASS: "/api/cwGatePass",
+  },
+
+  // Attendance endpoints
+  ATTENDANCE: {
+    LIST: "/api/CW_Attendance_list",
+    DETAILS: "/api/CW_Attendance/details",
+    APPROVE: "/api/CW_Attendance/approve",
+    REJECT: "/api/CW_Attendance/reject",
+    UPDATE_ATTENDANCE: "/api/cwAttendance/UpdateAttendanceApproval",
+    FLOW_ACTION: "/api/CWAttendanceFlowAction",
   },
 
   // Safety endpoints

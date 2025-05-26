@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "TSBPL App",
+    "name": "Construction App",
     "slug": "tsbplapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/tsbpl_app_icon.jpg",
     "userInterfaceStyle": "light",
     "permissions": ["CAMERA", "LOCATION"],
     "splash": {

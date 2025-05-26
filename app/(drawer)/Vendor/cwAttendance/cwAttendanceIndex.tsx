@@ -80,6 +80,10 @@ const CWAttendance = () => {
     }
   }, [selectedProjectNo]);
 
+  useEffect(() => {
+    checkLocationPermission();
+  }, []);
+
   const loadUserData = async () => {
     try {
       const userDataString = await AsyncStorage.getItem("userData");
@@ -140,6 +144,22 @@ const CWAttendance = () => {
     return true;
   };
 
+  const checkLocationPermission = async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationPermission(status);
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({});
+        setCurrentLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.error("Error checking location permission:", error);
+    }
+  };
+
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -157,6 +177,10 @@ const CWAttendance = () => {
   };
 
   const handleTakeAttendance = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     if (!isPermissionGranted) {
       const permission = await requestPermission();
       if (!permission.granted) {
@@ -164,16 +188,29 @@ const CWAttendance = () => {
       }
     }
 
-    if (!locationPermission) {
-      await requestLocationPermission();
-      if (!currentLocation) {
-        Alert.alert(
-          "Location Permission Required",
-          "Please grant location permission to take attendance."
-        );
-        return;
+    if (!currentLocation) {
+      if (locationPermission !== "granted") {
+        await requestLocationPermission();
+      } else {
+        try {
+          const location = await Location.getCurrentPositionAsync({});
+          setCurrentLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+        } catch (error) {
+          console.error("Error getting current location:", error);
+        }
       }
     }
+
+    // if (!currentLocation) {
+    //   Alert.alert(
+    //     "Location Permission Required",
+    //     "Please enable location services to take attendance."
+    //   );
+    //   return;
+    // }
 
     setIsScanning(true);
   };
@@ -184,6 +221,7 @@ const CWAttendance = () => {
 
     if (!currentLocation) {
       Alert.alert("Error", "Location not available. Please try again.");
+      setIsScanning(true);
       return;
     }
 
@@ -192,7 +230,7 @@ const CWAttendance = () => {
       dispatch(showLoading());
 
       const attendanceData = {
-        Vendor_Id: parsedData?.vendorId,
+        vid: parsedData?.vendorId,
         CW_Id: parsedData.cwId,
         Attendance_Taker_IN_Id: userData?.id,
         In_Lat_Long: `${currentLocation.latitude},${currentLocation.longitude}`,
@@ -214,12 +252,13 @@ const CWAttendance = () => {
           visible: true,
           message: response.data.message,
           type: "success",
-          redirect: true,
-          redirectPath: "/(drawer)/Vendor/cwAttendance/cwAttendanceIndex",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
           },
         });
+        setTimeout(() => {
+          setIsScanning(true);
+        }, 1500);
       } else {
         setAlert({
           visible: true,
@@ -229,6 +268,9 @@ const CWAttendance = () => {
             setAlert((prev) => ({ ...prev, visible: false }));
           },
         });
+        setTimeout(() => {
+          setIsScanning(true);
+        }, 1500);
       }
     } catch (error: any) {
       console.error("Error submitting attendance:", error);
@@ -240,6 +282,9 @@ const CWAttendance = () => {
           setAlert((prev) => ({ ...prev, visible: false }));
         },
       });
+      setTimeout(() => {
+        setIsScanning(true);
+      }, 1500);
     } finally {
       dispatch(hideLoading());
     }

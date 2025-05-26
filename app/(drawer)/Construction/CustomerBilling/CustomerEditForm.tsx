@@ -7,8 +7,16 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  BackHandler,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useDispatch } from "react-redux";
 
 interface ScopeItem {
@@ -84,6 +92,12 @@ const CustomerEditForm = ({
     }))
   );
 
+  // Add refs for input fields
+  const scopeItemRefs = useRef<{
+    [key: number]: { certifiedQty: TextInput | null };
+  }>({});
+  const remarksRef = useRef<TextInput>(null);
+
   const RequiredLabel = ({ label }: { label: string }) => (
     <Text style={styles.label}>
       {label}
@@ -104,7 +118,7 @@ const CustomerEditForm = ({
       prevItems.map((item) => {
         if (item.id === scopeId) {
           const balanceQty =
-            item.scopeQuantity - (item.scopeCumQuantity + numValue);
+            item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
             certifiedQty: numValue,
@@ -119,18 +133,23 @@ const CustomerEditForm = ({
   const validateForm = () => {
     // Validate scope items
     for (const item of scopeItems) {
-      if (!item.certifiedQty || item.certifiedQty <= 0) {
-        setError(
-          `Please enter certified quantity for scope item: ${item.scopes}`
-        );
-        return false;
-      }
-      if (item.certifiedQty > item.scopeQuantity) {
-        setError(
+      if (
+        item.certifiedQty &&
+        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+      ) {
+        Alert.alert(
+          "Validation Error",
           `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
         );
+        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
         return false;
       }
+    }
+
+    if (!flowRemarks.trim()) {
+      Alert.alert("Validation Error", "Please enter remarks.");
+      remarksRef.current?.focus();
+      return false;
     }
 
     return true;
@@ -214,6 +233,27 @@ const CustomerEditForm = ({
     loadUserData();
   }, []);
 
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert("Hold on!", "Are you sure you want to go back?", [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel",
+        },
+        { text: "YES", onPress: () => router.back() },
+      ]);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   return (
     <ScrollView style={styles.container}>
       {/* Building Details Section */}
@@ -273,9 +313,17 @@ const CustomerEditForm = ({
             <View style={styles.formGroup}>
               <Text style={styles.label}>Certified Qty</Text>
               <TextInput
+                ref={(el) => {
+                  if (el) {
+                    scopeItemRefs.current[item.id] = {
+                      certifiedQty: el,
+                    };
+                  }
+                }}
                 style={[
                   styles.input,
-                  item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                  item.certifiedQty &&
+                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
                     ? styles.errorInput
                     : null,
                 ]}
@@ -305,6 +353,7 @@ const CustomerEditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Remarks</Text>
           <TextInput
+            ref={remarksRef}
             style={[styles.input, styles.textArea]}
             placeholder="Enter Remarks"
             multiline

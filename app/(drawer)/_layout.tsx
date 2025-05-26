@@ -80,7 +80,7 @@ export default function DrawerLayout() {
             }}
           />
 
-          <Drawer.Screen
+          {/* <Drawer.Screen
             name="Vendor/index"
             options={{
               drawerLabel: "Contractor Worker",
@@ -95,38 +95,13 @@ export default function DrawerLayout() {
                 />
               ),
             }}
-          />
-
-          <Drawer.Screen
-            name="Vendor/CWCreateForm"
-            options={{
-              drawerLabel: "CW Create Form",
-              title: "CW Create Form",
-              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
-              headerLeft: () => (
-                <TouchableOpacity
-                  style={{ marginLeft: 15 }}
-                  onPress={() => router.push("/Vendor")}
-                >
-                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
-                </TouchableOpacity>
-              ),
-              headerRight: () => (
-                <Image
-                  source={require("@/assets/images/logo.png")}
-                  style={{ width: 100, height: 100, marginRight: 10 }}
-                  resizeMode="contain"
-                  tintColor="#fff"
-                />
-              ),
-            }}
-          />
+          />*/}
 
           <Drawer.Screen
             name="Vendor/cwAttendance/cwAttendanceIndex"
             options={{
-              drawerLabel: "CW Attendance",
-              title: "CW Attendance",
+              drawerLabel: "Take Attendance",
+              title: "Take Attendance",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
               headerLeft: () => (
                 <TouchableOpacity
@@ -148,6 +123,83 @@ export default function DrawerLayout() {
           />
 
           <Drawer.Screen
+            name="Vendor/cwAttendance/viewAttendance"
+            options={{
+              drawerLabel: "View Attendance",
+              title: "View Attendance",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/home")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
+            name="Vendor/cwAttendance/attendanceDetails"
+            options={{
+              drawerLabel: "Attendance Details",
+              title: "Attendance Details",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push("/Vendor/cwAttendance/viewAttendance")
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
+            name="Vendor/cwAttendance/attendanceView/Pending"
+            options={{
+              drawerLabel: "Pending Attendance",
+              title: "Pending Attendance",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/home")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          {/* <Drawer.Screen
             name="Vendor/CWDetails"
             options={{
               drawerLabel: "CW Details",
@@ -170,7 +222,7 @@ export default function DrawerLayout() {
                 />
               ),
             }}
-          />
+          /> */}
 
           <Drawer.Screen
             name="safety"
@@ -292,6 +344,57 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
+          <Drawer.Screen
+            name="Construction/attendanceView/index"
+            options={{
+              drawerLabel: "View Attendance",
+              title: "View Attendance",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/home")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
+          <Drawer.Screen
+            name="Construction/attendanceView/details"
+            options={{
+              drawerLabel: "Attendance Details",
+              title: "Attendance Details",
+              drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() => router.push("/Construction/attendanceView")}
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          />
+
           <Drawer.Screen
             name="Construction/DailyProjectProgressEntry/DailyProjectIndex"
             options={{
@@ -369,6 +472,7 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
           <Drawer.Screen
             name="Construction/CustomerBilling/customerBillingCreateForm"
             options={{

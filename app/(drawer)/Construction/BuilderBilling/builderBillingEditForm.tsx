@@ -8,13 +8,10 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
-import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
-  BackHandler,
   Platform,
   ScrollView,
   StyleSheet,
@@ -31,14 +28,14 @@ interface ProjectNo {
   text: string;
 }
 
-interface SubProjectVendor {
-  id: number;
-  vendorDetails: string;
-}
-
 interface SubProject {
   id: number;
   buildingName: string;
+}
+
+interface SubProjectVendor {
+  id: number;
+  vendorDetails: string;
 }
 
 interface ScopeItem {
@@ -63,15 +60,45 @@ interface UserData {
   id: string;
 }
 
-const BuilderBillingCreateForm = () => {
+interface BuilderEditFormProps {
+  id: number;
+  builderFlowId: number;
+  initialData: {
+    projectId: number;
+    projectNumber: string;
+    subProjectNumber: string;
+    subProjectName: string;
+    vendorCode: string;
+    vendorName: string;
+    soNumber: string;
+    runningAccountNumber: string;
+    runningAccountDate: Date;
+    scopeItems: Array<{
+      id: number;
+      scopeName: string;
+      scopeUOMName: string;
+      scopeQty: number;
+      scopeCummulativeQty: number;
+      scopeCertifiedQty: number;
+      scopeBalancedQty: number;
+    }>;
+  };
+  isSubmitting: boolean;
+}
+
+const BuilderBillingEditForm = ({
+  id,
+  builderFlowId,
+  initialData,
+  isSubmitting: propIsSubmitting,
+}: BuilderEditFormProps) => {
   const dispatch = useDispatch();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showRunningAccountDatePicker, setShowRunningAccountDatePicker] =
     useState(false);
   const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProjectNo, setSelectedProjectNo] = useState<number | null>(
-    null
+    initialData.projectId
   );
   const [subProjects, setSubProjects] = useState<SubProject[]>([]);
   const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
@@ -83,30 +110,28 @@ const BuilderBillingCreateForm = () => {
   const [subProjectVendors, setSubProjectVendors] = useState<
     SubProjectVendor[]
   >([]);
-  const [date, setDate] = useState<Date | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
+  const [date, setDate] = useState<Date>(initialData.runningAccountDate);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [scopeItems, setScopeItems] = useState<ScopeItem[]>([]);
-  const [soNumber, setSoNumber] = useState<string>("");
-  const [runningNumber, setRunningNumber] = useState<string>("");
+  const [scopeItems, setScopeItems] = useState<ScopeItem[]>(
+    initialData.scopeItems.map((item) => ({
+      id: item.id,
+      scopes: item.scopeName,
+      uom: item.scopeUOMName,
+      scopeQuantity: item.scopeQty,
+      scopeCumQuantity: item.scopeCummulativeQty,
+      certifiedQty: item.scopeCertifiedQty,
+      balanceQty: item.scopeBalancedQty,
+    }))
+  );
+  const [soNumber, setSoNumber] = useState<string>(initialData.soNumber);
+  const [runningNumber, setRunningNumber] = useState<string>(
+    initialData.runningAccountNumber
+  );
+  const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting);
+  const [flowRemarks, setFlowRemarks] = useState("");
 
-  // Add refs for input fields
-  const projectNoRef = useRef<Picker<number | null>>(null);
-  const subProjectRef = useRef<Picker<number | null>>(null);
-  const vendorRef = useRef<Picker<number | null>>(null);
-  const soNumberRef = useRef<TextInput>(null);
-  const runningNumberRef = useRef<TextInput>(null);
-  const scopeItemRefs = useRef<{
-    [key: number]: { certifiedQty: TextInput | null };
-  }>({});
-
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
   const [alert, setAlert] = useState<{
     visible: boolean;
     message: string;
@@ -118,9 +143,17 @@ const BuilderBillingCreateForm = () => {
     visible: false,
     message: "",
     type: "info",
-    redirect: false,
-    redirectPath: "",
   });
+
+  // Add refs for input fields
+  const projectNoRef = useRef<Picker<number | null>>(null);
+  const subProjectRef = useRef<Picker<number | null>>(null);
+  const vendorRef = useRef<Picker<number | null>>(null);
+  const soNumberRef = useRef<TextInput>(null);
+  const runningNumberRef = useRef<TextInput>(null);
+  const scopeItemRefs = useRef<{
+    [key: number]: { certifiedQty: TextInput | null };
+  }>({});
 
   const RequiredLabel = ({ label }: { label: string }) => (
     <Text style={styles.label}>
@@ -129,17 +162,11 @@ const BuilderBillingCreateForm = () => {
     </Text>
   );
 
-  const resetStates = () => {
-    setProjectNos([]);
-    setSelectedProjectNo(null);
-    setSubProjects([]);
-    setSubProjectVendors([]);
-    setSelectedSubProject(null);
-    setProjectDetails(null);
-    setScopeItems([]);
-    setDate(null);
-    setSoNumber("");
-    setRunningNumber("");
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
   };
 
   const onRunningAccountDateChange = (event: any, selectedDate?: Date) => {
@@ -147,107 +174,6 @@ const BuilderBillingCreateForm = () => {
     if (selectedDate) {
       setDate(selectedDate);
     }
-  };
-
-  const fetchProjectNos = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(API_ENDPOINTS.PROJECT_NO.LIST);
-      setProjectNos(response.data);
-    } catch (error) {
-      console.error("Error fetching project nos:", error);
-      setError("Failed to load project nos. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchSubProjects = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_NO.LIST}?id=${selectedProjectNo}`
-      );
-      console.log("response", response.data);
-      // [{"id":2,"buildingName":"Ta"}]
-      setSubProjects(response.data);
-    } catch (error) {
-      console.error("Error fetching sub projects:", error);
-      setError("Failed to load sub projects. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchProjectDetails = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `/api/SubProjectDetails?id=${selectedSubProject}`
-      );
-      console.log("response", response.data);
-      setProjectDetails(response.data[0]);
-    } catch (error) {
-      console.error("Error fetching project details:", error);
-      setError("Failed to load project details. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchSubProjectVendors = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.SUB_PROJECT_VENDOR.LIST}?id=${selectedSubProject}`
-      );
-      //[{"id":5,"vendorDetails":"Vendor 2 (Tana Bass)"}]
-      setSubProjectVendors(response.data);
-    } catch (error) {
-      console.error("Error fetching sub project vendors:", error);
-      setError("Failed to load sub project vendors. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const fetchScopeItems = async () => {
-    try {
-      dispatch(showLoading());
-      setError(null);
-      const response = await httpClient.get(
-        `${API_ENDPOINTS.CUSTOMER_BILLING_SCOPE.LIST}?id=${selectedSubProject}`
-      );
-      if (response.data.success) {
-        const items = response.data.data.map((item: any) => ({
-          ...item,
-          certifiedQty: 0,
-          balanceQty: item.scopeQuantity,
-          selectedVendor: null,
-        }));
-        setScopeItems(items);
-      }
-    } catch (error) {
-      console.error("Error fetching scope items:", error);
-      setError("Failed to load scope items. Please try again.");
-    } finally {
-      dispatch(hideLoading());
-    }
-  };
-
-  const handleScopeItemChange = (scopeId: number, value: string) => {
-    setScopeItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id === scopeId) {
-          return { ...item, scopes: value };
-        }
-        return item;
-      })
-    );
   };
 
   const handleCertifiedQtyChange = (scopeId: number, value: string) => {
@@ -266,38 +192,6 @@ const BuilderBillingCreateForm = () => {
         return item;
       })
     );
-  };
-
-  useEffect(() => {
-    const backAction = () => {
-      Alert.alert("Hold on!", "Are you sure you want to go back?", [
-        {
-          text: "Cancel",
-          onPress: () => null,
-          style: "cancel",
-        },
-        { text: "YES", onPress: () => router.back() },
-      ]);
-      return true;
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
-
-    return () => backHandler.remove();
-  }, []);
-
-  const loadUserData = async () => {
-    try {
-      const userDataString = await AsyncStorage.getItem("userData");
-      if (userDataString) {
-        setUserData(JSON.parse(userDataString));
-      }
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
   };
 
   const validateForm = () => {
@@ -350,35 +244,26 @@ const BuilderBillingCreateForm = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const handleUpdate = async () => {
     if (!validateForm()) {
       return;
     }
 
-    if (!userData?.id) {
-      console.log("Waiting for user data to be loaded...");
-      return;
-    }
-
     try {
-      setIsSubmitting(true);
       dispatch(showLoading());
 
-      const formattedDate = date ? date.toISOString().split("T")[0] : "";
-
       const payload = {
-        ProjectId: selectedProjectNo || 0,
-        subProjectId: selectedSubProject || 0,
+        Id: id.toString(),
         SO_Number: soNumber,
         Running_Acc_No: runningNumber,
-        Running_Acc_Date: formattedDate,
-        VendorId: selectedVendor || 0,
-        CreatedBy: userData?.id
+        Running_Acc_Date: date,
+        UpdatedBy: userData?.id
           ? Buffer.from(userData.id.toString(), "utf-8").toString("base64")
           : "",
+        Builder_Flow_Id: builderFlowId.toString(),
+        Builder_Flow_FlowRemarks: flowRemarks,
         Scopes: scopeItems.map((item) => ({
-          ScopeId: item.id,
-          ScopeName: item.scopes,
+          RowId: item.id.toString(),
           ScopeQty: item.scopeQuantity,
           scopeCumQTY: item.scopeCumQuantity,
           ScopeQtyInput: item.certifiedQty || 0,
@@ -386,10 +271,10 @@ const BuilderBillingCreateForm = () => {
         })),
       };
 
-      console.log("payload", payload);
+      console.log(payload);
 
       const response = await httpClient.post(
-        API_ENDPOINTS.BUILDER_BILLING.CREATE,
+        API_ENDPOINTS.BUILDER_BILLING.UPDATE,
         payload
       );
 
@@ -402,50 +287,42 @@ const BuilderBillingCreateForm = () => {
           redirectPath:
             "/(drawer)/Construction/BuilderBilling/BuilderBillingIndex",
           onClose: () => {
-            resetStates();
+            setAlert((prev) => ({ ...prev, visible: false }));
           },
         });
       } else {
         setAlert({
           visible: true,
-          message: response.data.message || "Failed to submit form",
+          message: response.data.message || "Failed to update form",
           type: "error",
         });
       }
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Error updating form:", error);
       setAlert({
         visible: true,
-        message: "Failed to submit form. Please try again.",
+        message: "Failed to update form. Please try again.",
         type: "error",
       });
     } finally {
       dispatch(hideLoading());
-      setIsSubmitting(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      resetStates();
-      loadUserData();
-      fetchProjectNos();
-    }, [])
-  );
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        setUserData(JSON.parse(userDataString));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
 
   useEffect(() => {
-    if (selectedProjectNo) {
-      fetchSubProjects();
-    }
-  }, [selectedProjectNo]);
-
-  useEffect(() => {
-    if (selectedSubProject) {
-      fetchProjectDetails();
-      fetchSubProjectVendors();
-      fetchScopeItems();
-    }
-  }, [selectedSubProject]);
+    loadUserData();
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
@@ -456,95 +333,47 @@ const BuilderBillingCreateForm = () => {
           <Text style={styles.sectionTitle}>Project Details</Text>
           <View style={styles.formGroup}>
             <RequiredLabel label="Project Number" />
-            <View style={styles.pickerContainer}>
-              <Picker
-                ref={projectNoRef}
-                selectedValue={selectedProjectNo}
-                onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="-- Select Project --" value={null} />
-                {projectNos.map((projectNo) => (
-                  <Picker.Item
-                    key={projectNo.value}
-                    label={projectNo.text}
-                    value={projectNo.value}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.projectNumber}
+              editable={false}
+            />
           </View>
 
           <View style={styles.formGroup}>
-            <RequiredLabel label="Sub Project" />
-            <View style={styles.pickerContainer}>
-              <Picker
-                ref={subProjectRef}
-                selectedValue={selectedSubProject}
-                onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="-- Select Sub Project --" value={null} />
-                {subProjects.map((subProject) => (
-                  <Picker.Item
-                    key={subProject.id}
-                    label={subProject.buildingName}
-                    value={subProject.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <RequiredLabel label="Sub Project (DO Number)" />
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.subProjectNumber}
+              editable={false}
+            />
           </View>
 
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Sub Project Name" />
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.subProjectName}
+              editable={false}
+            />
+          </View>
           <View style={styles.formGroup}>
             <RequiredLabel label="Vendor Code" />
-            <View style={styles.pickerContainer}>
-              <Picker
-                ref={vendorRef}
-                selectedValue={selectedVendor}
-                onValueChange={(value) => {
-                  setSelectedVendor(value);
-                }}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select Vendor" value={null} />
-                {subProjectVendors.map((vendor) => (
-                  <Picker.Item
-                    key={vendor.id}
-                    label={vendor.vendorDetails}
-                    value={vendor.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.vendorCode}
+              editable={false}
+            />
           </View>
 
-          {projectDetails && (
-            <View style={styles.infoContainer}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Name of Project: </Text>
-                <Text style={styles.infoValue}>
-                  {projectDetails.projectName}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>DO Number: </Text>
-                <Text style={styles.infoValue}>{projectDetails.doNumber}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Total No. of Buildings: </Text>
-                <Text style={styles.infoValue}>
-                  {projectDetails.noOfBuilding}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Building Name(s): </Text>
-                <Text style={styles.infoValue}>
-                  {projectDetails.buildingName}
-                </Text>
-              </View>
-            </View>
-          )}
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Vendor Name" />
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.vendorName}
+              editable={false}
+            />
+          </View>
         </View>
 
         {/* Building Details Section */}
@@ -556,16 +385,17 @@ const BuilderBillingCreateForm = () => {
               ref={soNumberRef}
               style={styles.input}
               value={soNumber}
-              onChangeText={(value) => setSoNumber(value)}
+              onChangeText={setSoNumber}
             />
           </View>
+
           <View style={styles.formGroup}>
             <RequiredLabel label="Running Number" />
             <TextInput
               ref={runningNumberRef}
               style={styles.input}
               value={runningNumber}
-              onChangeText={(value) => setRunningNumber(value)}
+              onChangeText={setRunningNumber}
             />
           </View>
 
@@ -575,11 +405,11 @@ const BuilderBillingCreateForm = () => {
               style={styles.dateInput}
               onPress={() => setShowRunningAccountDatePicker(true)}
             >
-              <Text>{formatDate(date || new Date())}</Text>
+              <Text>{formatDate(date)}</Text>
             </TouchableOpacity>
             {showRunningAccountDatePicker && (
               <DateTimePicker
-                value={date || new Date()}
+                value={date}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onRunningAccountDateChange}
@@ -596,11 +426,9 @@ const BuilderBillingCreateForm = () => {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Scope Item</Text>
                 <TextInput
-                  style={[styles.input]}
-                  value={item.scopes}
-                  onChangeText={(value) =>
-                    handleScopeItemChange(item.id, value)
-                  }
+                  style={[styles.input, styles.disabledInput]}
+                  value={`${item.scopes} (${item.uom})`}
+                  editable={false}
                 />
               </View>
 
@@ -660,24 +488,46 @@ const BuilderBillingCreateForm = () => {
           ))}
         </View>
 
+        {/* Remarks Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Remarks</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Remarks</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Enter Remarks"
+              multiline
+              numberOfLines={3}
+              value={flowRemarks}
+              onChangeText={setFlowRemarks}
+            />
+          </View>
+        </View>
+
         {/* Buttons */}
         {isSubmitting ? (
           <View style={styles.buttonContainer}>
-            <CustomButton
-              title="Submitting..."
-              onPress={() => {}}
-              variant="primary"
-            />
+            <View style={styles.buttonWrapper}>
+              <CustomButton
+                title="Submitting..."
+                onPress={() => {}}
+                variant="primary"
+              />
+            </View>
           </View>
         ) : (
           <View style={styles.buttonContainer}>
-            <CustomButton
-              title="Submit"
-              onPress={handleSubmit}
-              variant="primary"
-            />
+            <View style={styles.buttonWrapper}>
+              <CustomButton
+                title="Update"
+                onPress={handleUpdate}
+                variant="primary"
+                disabled={isSubmitting}
+              />
+            </View>
           </View>
         )}
+
         {/* Add CustomAlert at the end of the component */}
         <CustomAlert
           visible={alert.visible}
@@ -697,7 +547,7 @@ const BuilderBillingCreateForm = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 2,
     backgroundColor: COLORS.background,
   },
   dateInput: {
@@ -809,6 +659,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 50,
   },
+  buttonWrapper: {
+    marginTop: 20,
+    marginBottom: 50,
+  },
   datePicker: {
     width: "100%",
   },
@@ -832,4 +686,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BuilderBillingCreateForm;
+export default BuilderBillingEditForm;

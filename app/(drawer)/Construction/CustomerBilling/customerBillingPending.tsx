@@ -6,8 +6,8 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,10 +18,32 @@ import {
 } from "react-native";
 import { useDispatch } from "react-redux";
 
+interface CustomerBillingItem {
+  serialNo: number;
+  jmR_Number: string;
+  jmR_Date: string;
+  projectNo: string;
+  projectName: string;
+  subProject: string;
+  regStatus: string;
+  status: string;
+  pendingWith: Array<{
+    name: string;
+    roleName: string;
+  }>;
+  createdDateTime: string;
+  id: string;
+}
+
 interface CustomerBillingListResponse {
   success: boolean;
   message: string;
-  data?: any;
+  data?: {
+    draw: number;
+    recordsTotal: number;
+    recordsFiltered: number;
+    data: CustomerBillingItem[];
+  };
 }
 
 interface UserData {
@@ -31,11 +53,12 @@ interface UserData {
 const customerBillingPending = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<CustomerBillingItem[]>([]);
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const PAGE_SIZE = 10;
 
@@ -46,21 +69,46 @@ const customerBillingPending = () => {
     setIsLoading(false);
   };
 
-  const fetchData = async () => {
-    if (!hasMore || isLoading || !userData?.id) {
-      return;
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        const parsedData = JSON.parse(userDataString);
+        setUserData(parsedData);
+        return parsedData;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      return null;
     }
+  };
+
+  const fetchData = async () => {
+    if (!hasMore || isLoading) return;
+
     setIsLoading(true);
     dispatch(showLoading());
+    setError(null);
 
     try {
+      // Ensure we have user data
+      let currentUserData = userData;
+      if (!currentUserData?.id) {
+        currentUserData = await loadUserData();
+        if (!currentUserData?.id) {
+          setError("User data not available");
+          return;
+        }
+      }
+
       const response = await httpClient.post<CustomerBillingListResponse>(
         API_ENDPOINTS.CUSTOMER_BILLING.LIST,
         {
           start,
           length: PAGE_SIZE,
           search: "",
-          meId: Buffer.from(userData?.id.toString(), "utf-8").toString(
+          meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
             "base64"
           ),
         }
@@ -71,33 +119,21 @@ const customerBillingPending = () => {
       setStart((prev) => prev + PAGE_SIZE);
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching Customer Billing data:", error);
+      console.error("Error fetching DPR data:", error);
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
     }
   };
 
-  useEffect(() => {
-    const init = async () => {
-      await loadUserData(); // ensure userData is set
-      fetchData(); // call API only after that
-    };
-    init();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      resetState();
+      fetchData();
+    }, [])
+  );
 
-  const loadUserData = async () => {
-    try {
-      const userDataString = await AsyncStorage.getItem("userData");
-      if (userDataString) {
-        setUserData(JSON.parse(userDataString));
-      }
-    } catch (error) {
-      console.error("Error loading user data:", error);
-    }
-  };
-
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: CustomerBillingItem }) => (
     <TouchableOpacity
       onPress={() => {
         router.replace(
@@ -121,17 +157,30 @@ const customerBillingPending = () => {
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={styles.statusInProgress}
+            valueStyle={
+              item.regStatus === "IN PROGRESS"
+                ? styles.statusInProgress
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={styles.statusInactive}
+            valueStyle={
+              item.status === "ACTIVE"
+                ? styles.statusActive
+                : item.status === "INACTIVE"
+                ? styles.statusInactive
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Pending with"
             value={item.pendingWith
-              ?.map((p: any) => `${p.name} (${p.roleName})`)
+              ?.map(
+                (p: { name: string; roleName: string }) =>
+                  `${p.name} (${p.roleName})`
+              )
               .join(", ")}
           />
         </View>
@@ -228,6 +277,46 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "#FF4444",
+    fontSize: SIZES.medium,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    color: "#666",
+    fontSize: SIZES.medium,
+    textAlign: "center",
+  },
+  statusActive: {
+    color: "#008000",
+  },
+  statusCompleted: {
+    color: "#008000",
   },
 });
 

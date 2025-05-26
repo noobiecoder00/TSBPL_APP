@@ -99,12 +99,22 @@ const customerBillingAll = () => {
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={styles.statusInProgress}
+            valueStyle={
+              item.regStatus === "IN PROGRESS"
+                ? styles.statusInProgress
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={styles.statusInactive}
+            valueStyle={
+              item.status === "ACTIVE"
+                ? styles.statusActive
+                : item.status === "INACTIVE"
+                ? styles.statusInactive
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Pending with"
@@ -203,6 +213,12 @@ const styles = StyleSheet.create({
   },
   statusInactive: {
     color: "#FF4444",
+  },
+  statusActive: {
+    color: "#008000",
+  },
+  statusCompleted: {
+    color: "#008000",
   },
   separator: {
     height: 16,

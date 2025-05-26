@@ -6,10 +6,11 @@ import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   StyleSheet,
   Text,
@@ -18,49 +19,25 @@ import {
 } from "react-native";
 import { useDispatch } from "react-redux";
 
-interface BuilderBillingItem {
-  serialNo: number;
-  sO_Number: string;
-  running_Number: string;
-  running_Date: string;
-  projectNo: string;
-  projectName: string;
-  subProject: string;
-  vendorMaster: string;
-  regStatus: string;
-  status: string;
-  pendingWith: Array<{
-    name: string;
-    roleName: string;
-  }>;
-  createdDateTime: string;
-  id: string;
-}
-
-interface BuilderBillingListResponse {
+interface ListResponse {
   success: boolean;
   message: string;
-  data?: {
-    draw: number;
-    recordsTotal: number;
-    recordsFiltered: number;
-    data: BuilderBillingItem[];
-  };
+  data?: any;
 }
 
 interface UserData {
   id: string;
 }
 
-const builderBillingPending = () => {
+const All = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-  const [data, setData] = useState<BuilderBillingItem[]>([]);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [data, setData] = useState<any[]>([]);
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const PAGE_SIZE = 10;
 
@@ -74,45 +51,55 @@ const builderBillingPending = () => {
   const loadUserData = async () => {
     try {
       const userDataString = await AsyncStorage.getItem("userData");
-      if (userDataString) {
-        const parsedData = JSON.parse(userDataString);
-        setUserData(parsedData);
-        return parsedData;
+      if (!userDataString) {
+        console.error("No user data found in AsyncStorage");
+        return false;
       }
-      return null;
+
+      const parsedUserData = JSON.parse(userDataString);
+      if (!parsedUserData?.id) {
+        console.error("Invalid user data format - missing id");
+        return false;
+      }
+
+      setUserData(parsedUserData);
+      return true;
     } catch (error) {
       console.error("Error loading user data:", error);
-      return null;
+      return false;
     }
   };
 
   const fetchData = async () => {
-    if (!hasMore || isLoading) return;
+    if (!hasMore || isLoading || !userData?.id) {
+      if (!userData?.id) {
+        console.log("No user data found");
+      }
+      if (!hasMore) {
+        console.log("No more data");
+      }
+      if (isLoading) {
+        console.log("Loading");
+      }
+      return;
+    }
 
     setIsLoading(true);
     dispatch(showLoading());
-    setError(null);
 
     try {
-      // Ensure we have user data
-      let currentUserData = userData;
-      if (!currentUserData?.id) {
-        currentUserData = await loadUserData();
-        if (!currentUserData?.id) {
-          setError("User data not available");
-          return;
-        }
-      }
+      const encodedUserId = Buffer.from(
+        userData.id.toString(),
+        "utf-8"
+      ).toString("base64");
 
-      const response = await httpClient.post<BuilderBillingListResponse>(
-        API_ENDPOINTS.BUILDER_BILLING.LIST,
+      const response = await httpClient.post<ListResponse>(
+        API_ENDPOINTS.VENDOR.VIEW_ATTENDANCE,
         {
           start,
           length: PAGE_SIZE,
           search: "",
-          meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
-            "base64"
-          ),
+          meId: encodedUserId,
         }
       );
 
@@ -121,26 +108,35 @@ const builderBillingPending = () => {
       setStart((prev) => prev + PAGE_SIZE);
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching DPR data:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      resetState();
-      fetchData();
-    }, [])
-  );
+  useEffect(() => {
+    const initialize = async () => {
+      setIsInitializing(true);
+      try {
+        const userDataLoaded = await loadUserData();
+        if (userDataLoaded) {
+          await fetchData();
+        }
+      } catch (error) {
+        console.error("Initialization error:", error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
 
-  const renderItem = ({ item }: { item: BuilderBillingItem }) => (
+    initialize();
+  }, []);
+
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(
-          `/(drawer)/Construction/BuilderBilling/builderBillingDetails?id=${item.id}`
-        );
+        router.replace(`/Vendor/cwAttendance/attendanceDetails?id=${item.id}`);
       }}
       activeOpacity={0.85}
     >
@@ -151,46 +147,36 @@ const builderBillingPending = () => {
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="SO Number" value={item.sO_Number} />
-          <InfoRow label="Running Number" value={item.running_Number} />
-          <InfoRow label="Running Date" value={item.running_Date} />
-          <InfoRow label="Project No" value={item.projectNo} />
-          <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProject} />
-          <InfoRow label="Vendor Master" value={item.vendorMaster} />
-          <InfoRow
-            label="Reg. Status"
-            value={item.regStatus}
-            valueStyle={
-              item.regStatus === "IN PROGRESS"
-                ? styles.statusInProgress
-                : styles.statusCompleted
-            }
-          />
+          <InfoRow label="Project No." value={item.projectNumber} />
+          <InfoRow label="Project Name" value={item.project_Name} />
+          <InfoRow label="Sub Project Name" value={item.subProjectName} />
+          <InfoRow label="Total In" value={item.totalIn} />
+          <InfoRow label="Total Out" value={item.totalOut} />
           <InfoRow
             label="Status"
-            value={item.status}
-            valueStyle={
-              item.status === "ACTIVE"
-                ? styles.statusActive
-                : item.status === "INACTIVE"
-                ? styles.statusInactive
-                : styles.statusCompleted
-            }
+            value={item.status?.toUpperCase()}
+            valueStyle={styles.statusInactive}
           />
           <InfoRow
             label="Pending with"
             value={item.pendingWith
-              ?.map(
-                (p: { name: string; roleName: string }) =>
-                  `${p.name} (${p.roleName})`
-              )
+              ?.map((p: any) => `${p.name} (${p.roleName})`)
               .join(", ")}
           />
+          <InfoRow label="Created Date Time" value={item.createdDateTime} />
         </View>
       </LinearGradient>
     </TouchableOpacity>
   );
+
+  if (isInitializing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -282,46 +268,67 @@ const styles = StyleSheet.create({
   separator: {
     height: 16,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
+  button: {
+    backgroundColor: COLORS.success,
+    padding: 10,
+    borderRadius: 5,
     alignItems: "center",
-    padding: 20,
+    justifyContent: "center",
+    marginTop: 10,
   },
-  errorText: {
-    color: "#FF4444",
-    fontSize: SIZES.medium,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
+  buttonText: {
     color: "#fff",
     fontSize: SIZES.medium,
     fontWeight: "600",
   },
-  emptyContainer: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 20,
+    width: Dimensions.get("window").width * 0.9,
+    maxHeight: Dimensions.get("window").height * 0.8,
+    alignItems: "center",
+  },
+  closeButton: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
+  },
+  gatepassImage: {
+    width: "100%",
+    height: Dimensions.get("window").height * 0.6,
+    marginVertical: 20,
+  },
+  downloadButton: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    width: "100%",
+    alignItems: "center",
+  },
+  downloadButtonText: {
+    color: "#fff",
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    backgroundColor: COLORS.background,
   },
-  emptyText: {
-    color: "#666",
+  loadingText: {
+    marginTop: 10,
     fontSize: SIZES.medium,
-    textAlign: "center",
-  },
-  statusActive: {
-    color: "#008000",
-  },
-  statusCompleted: {
-    color: "#008000",
+    color: COLORS.primary,
   },
 });
 
-export default builderBillingPending;
+export default All;

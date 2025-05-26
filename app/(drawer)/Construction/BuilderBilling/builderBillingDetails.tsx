@@ -730,9 +730,9 @@ const CustomerBillingDetails = () => {
                   />
                 </View>
 
-                {flow.document && (
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Uploaded Document</Text>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Uploaded Document</Text>
+                  {flow.document ? (
                     <FilePreview
                       file={{
                         uri: `${baseURL}/uploads/Builder_FlowActionfiles/${flow.document}`,
@@ -740,8 +740,12 @@ const CustomerBillingDetails = () => {
                         type: "application/pdf",
                       }}
                     />
-                  </View>
-                )}
+                  ) : (
+                    <Text style={styles.noDocumentsText}>
+                      No Documents Uploaded
+                    </Text>
+                  )}
+                </View>
               </View>
             ))}
           </>
@@ -1148,6 +1152,14 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     flex: 1,
+  },
+  noDocumentsText: {
+    ...FONTS.regular,
+    fontSize: SIZES.small,
+    color: COLORS.gray,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginVertical: 10,
   },
 });
 

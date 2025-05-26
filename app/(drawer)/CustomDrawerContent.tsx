@@ -170,11 +170,13 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         style={getMenuStyle("home")}
       />
 
-      {/* Vendor Menu with Toggle */}
-      {(accessibleActions.includes("VendorMaster/Details") ||
+      {/* accessibleActions.includes("VendorMaster/Details") ||
         accessibleActions.includes("VendorMaster/Create") ||
         accessibleActions.includes("VendorMaster/Edit") ||
-        accessibleActions.includes("VendorMaster/Delete")) && (
+        accessibleActions.includes("VendorMaster/Delete") ||
+         */}
+      {/* Vendor Menu with Toggle */}
+      {userData?.type === "Vendor" && (
         <>
           <TouchableOpacity onPress={toggleVendorMenu}>
             <View style={[styles.menuItem, getMenuStyle("Vendor")]}>
@@ -210,16 +212,16 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
             }}
           >
             <View style={styles.nestedMenuContainer}>
-              <DrawerItem
+              {/* <DrawerItem
                 label="Contractor Worker"
                 onPress={() => props.navigation.navigate("Vendor/index")}
                 icon={({ color }) => (
                   <Ionicons name="people-outline" size={20} color={color} />
                 )}
                 style={getMenuStyle("Vendor/index")}
-              />
+              /> */}
               <DrawerItem
-                label="CW Attendance"
+                label="Take Attendance"
                 onPress={() =>
                   props.navigation.navigate(
                     "Vendor/cwAttendance/cwAttendanceIndex"
@@ -229,6 +231,18 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
                   <Ionicons name="time-outline" size={20} color={color} />
                 )}
                 style={getMenuStyle("Vendor/cwAttendance/cwAttendanceIndex")}
+              />
+              <DrawerItem
+                label="View Attendance"
+                onPress={() =>
+                  props.navigation.navigate(
+                    "Vendor/cwAttendance/viewAttendance"
+                  )
+                }
+                icon={({ color }) => (
+                  <Ionicons name="eye-outline" size={20} color={color} />
+                )}
+                style={getMenuStyle("Vendor/cwAttendance/viewAttendance")}
               />
             </View>
           </Animated.View>
@@ -341,6 +355,16 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
             }}
           >
             <View style={styles.nestedMenuContainer}>
+              <DrawerItem
+                label="View Attendance"
+                onPress={() =>
+                  props.navigation.navigate("Construction/attendanceView/index")
+                }
+                icon={({ color }) => (
+                  <Ionicons name="eye-outline" size={20} color={color} />
+                )}
+                style={getMenuStyle("Construction/attendanceView/index")}
+              />
               {(accessibleActions.includes(
                 "DailyProjectProgressEntryForm/Create"
               ) ||
@@ -427,24 +451,26 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
         </>
       )}
 
-      <DrawerItem
-        label="Change Password"
-        onPress={() => props.navigation.navigate("changePwd")}
-        icon={({ color }) => (
-          <Ionicons name="lock-closed-outline" size={24} color={color} />
-        )}
-        style={getMenuStyle("changePwd")}
-      />
-      <DrawerItem
-        label="Logout"
-        onPress={() => {
-          AsyncStorage.clear();
-          router.replace("/pages/login");
-        }}
-        icon={({ color }) => (
-          <Ionicons name="log-out-outline" size={24} color={color} />
-        )}
-      />
+      <View style={{ marginTop: 10 }}>
+        <DrawerItem
+          label="Change Password"
+          onPress={() => props.navigation.navigate("changePwd")}
+          icon={({ color }) => (
+            <Ionicons name="lock-closed-outline" size={24} color={color} />
+          )}
+          style={getMenuStyle("changePwd")}
+        />
+        <DrawerItem
+          label="Logout"
+          onPress={() => {
+            AsyncStorage.clear();
+            router.replace("/pages/login");
+          }}
+          icon={({ color }) => (
+            <Ionicons name="log-out-outline" size={24} color={color} />
+          )}
+        />
+      </View>
     </DrawerContentScrollView>
   );
 };

@@ -3,10 +3,18 @@ import { CustomButton } from "@/components/CustomButton";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Image, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 
 interface LoginResponse {
@@ -20,6 +28,7 @@ interface LoginResponse {
     role: string;
     locationIds: number[];
     accessibleActions: string[];
+    force: string;
   };
 }
 
@@ -46,6 +55,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState("User");
   const [open, setOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [items] = useState([
     { label: "User", value: "User" },
     { label: "Vendor", value: "Vendor" },
@@ -105,7 +115,7 @@ export default function LoginScreen() {
 
       const response = await httpClient.post<
         LoginResponse | VendorLoginResponse
-      >(endpoint, payload);
+      >(endpoint, payload, { timeout: 60000 });
 
       //console.log("Response received:", response.data);
 
@@ -122,6 +132,7 @@ export default function LoginScreen() {
             role: userResponse.userInfo.role,
             locationIds: userResponse.userInfo.locationIds,
             accessibleActions: userResponse.userInfo.accessibleActions,
+            force: userResponse.userInfo.force,
             type: "User",
           };
         } else {
@@ -136,7 +147,7 @@ export default function LoginScreen() {
           };
         }
 
-        //  console.log("Final userData:", userData);
+        // console.log("Final userData:", userData);
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
         //console.log("User data saved to AsyncStorage");
         router.replace("/(drawer)/home");
@@ -180,11 +191,21 @@ export default function LoginScreen() {
         `${endpoint}/${email}`
       );
 
-      setAlert({
-        visible: true,
-        message: response.data.message,
-        type: response.data.status ? "success" : "error",
-      });
+      console.log("Response received:", response.data);
+
+      if (response.data.status) {
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "success",
+        });
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message,
+          type: "error",
+        });
+      }
     } catch (error: any) {
       setAlert({
         visible: true,
@@ -233,13 +254,25 @@ export default function LoginScreen() {
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={[styles.input, errors.password && styles.inputError]}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter your password"
-          secureTextEntry
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.passwordInput, errors.password && styles.inputError]}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Enter your password"
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off" : "eye"}
+              size={24}
+              color={COLORS.gray}
+            />
+          </TouchableOpacity>
+        </View>
         {errors.password && (
           <Text style={styles.errorText}>{errors.password}</Text>
         )}
@@ -326,5 +359,23 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     borderColor: COLORS.lightGray,
     backgroundColor: COLORS.white,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+    marginBottom: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  eyeButton: {
+    padding: 12,
   },
 });

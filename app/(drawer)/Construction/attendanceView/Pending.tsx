@@ -3,8 +3,10 @@ import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,19 +18,24 @@ import {
 } from "react-native";
 import { useDispatch } from "react-redux";
 
-interface DPRListResponse {
+interface UserData {
+  id: string;
+}
+
+interface ListResponse {
   success: boolean;
   message: string;
   data?: any;
 }
 
-const builderBillingAll = () => {
+const Pending = () => {
   const dispatch = useDispatch();
-  const router = useRouter();
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [data, setData] = useState<any[]>([]);
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const PAGE_SIZE = 10;
 
@@ -39,29 +46,59 @@ const builderBillingAll = () => {
     setIsLoading(false);
   };
 
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        const parsedData = JSON.parse(userDataString);
+        setUserData(parsedData);
+        return parsedData;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      return null;
+    }
+  };
+
   const fetchData = async () => {
-    if (!hasMore || isLoading) return;
+    if (!hasMore || isLoading) {
+      return;
+    }
 
     setIsLoading(true);
     dispatch(showLoading());
 
     try {
-      const response = await httpClient.post<DPRListResponse>(
-        API_ENDPOINTS.BUILDER_BILLING.LIST,
+      // Ensure we have user data
+      let currentUserData = userData;
+      if (!currentUserData?.id) {
+        currentUserData = await loadUserData();
+        if (!currentUserData?.id) {
+          console.log("User data not available");
+          return;
+        }
+      }
+      console.log("currentUserData", currentUserData);
+      const response = await httpClient.post<ListResponse>(
+        API_ENDPOINTS.ATTENDANCE.LIST,
         {
           start,
           length: PAGE_SIZE,
           search: "",
-          meId: "0",
+          meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+            "base64"
+          ),
         }
       );
 
       const items = response.data?.data?.data ?? [];
+      console.log("items", items);
       setData((prev) => [...prev, ...items]);
       setStart((prev) => prev + PAGE_SIZE);
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching DPR data:", error);
+      console.error("Error fetching CW data:", error);
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
@@ -78,9 +115,7 @@ const builderBillingAll = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(
-          `/Construction/BuilderBilling/builderBillingDetails?id=${item.id}`
-        );
+        router.replace(`/Construction/attendanceView/details?id=${item.id}`);
       }}
       activeOpacity={0.85}
     >
@@ -91,30 +126,21 @@ const builderBillingAll = () => {
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="SO Number" value={item.sO_Number} />
-          <InfoRow label="Running Number" value={item.running_Number} />
-          <InfoRow label="Running Date" value={item.running_Date} />
-          <InfoRow label="Project No" value={item.projectNo} />
-          <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProject} />
-          <InfoRow
-            label="Reg. Status"
-            value={item.regStatus}
-            valueStyle={
-              item.regStatus === "IN PROGRESS"
-                ? styles.statusInProgress
-                : styles.statusCompleted
-            }
-          />
+          <InfoRow label="Project No." value={item.projectNumber} />
+          <InfoRow label="Project Name" value={item.project_Name} />
+          <InfoRow label="Sub Project Name" value={item.subProjectName} />
+          <InfoRow label="Vendor" value={item.vendorName} />
+          <InfoRow label="Total In" value={item.totalIn} />
+          <InfoRow label="Total Out" value={item.totalOut} />
           <InfoRow
             label="Status"
-            value={item.status}
+            value={item.status?.toUpperCase()}
             valueStyle={
-              item.status === "ACTIVE"
-                ? styles.statusActive
-                : item.status === "INACTIVE"
-                ? styles.statusInactive
-                : styles.statusCompleted
+              item.status?.toLowerCase() === "pending"
+                ? styles.statusPending
+                : item.status?.toLowerCase() === "completed"
+                ? styles.statusCompleted
+                : null
             }
           />
           <InfoRow
@@ -123,6 +149,7 @@ const builderBillingAll = () => {
               ?.map((p: any) => `${p.name} (${p.roleName})`)
               .join(", ")}
           />
+          <InfoRow label="Created Date Time" value={item.createdDateTime} />
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -212,18 +239,15 @@ const styles = StyleSheet.create({
   statusInProgress: {
     color: "#FFA500",
   },
+  statusPending: {
+    color: "#FFA500",
+  },
   statusCompleted: {
     color: "#008000",
-  },
-  statusActive: {
-    color: "#008000",
-  },
-  statusInactive: {
-    color: "#FF4444",
   },
   separator: {
     height: 16,
   },
 });
 
-export default builderBillingAll;
+export default Pending;

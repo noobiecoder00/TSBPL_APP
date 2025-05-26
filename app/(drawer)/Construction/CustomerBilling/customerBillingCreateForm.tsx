@@ -9,9 +9,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
-import React, { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  BackHandler,
   ScrollView,
   StyleSheet,
   Text,
@@ -92,6 +94,13 @@ const CustomerBillingCreateForm = () => {
     redirect: false,
     redirectPath: "",
   });
+
+  // Add refs for input fields
+  const projectNoRef = useRef<Picker<number | null>>(null);
+  const subProjectRef = useRef<Picker<number | null>>(null);
+  const scopeItemRefs = useRef<{
+    [key: number]: { certifiedQty: TextInput | null };
+  }>({});
 
   const RequiredLabel = ({ label }: { label: string }) => (
     <Text style={styles.label}>
@@ -188,7 +197,7 @@ const CustomerBillingCreateForm = () => {
       prevItems.map((item) => {
         if (item.id === scopeId) {
           const balanceQty =
-            item.scopeQuantity - (item.scopeCumQuantity + numValue);
+            item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
             certifiedQty: numValue,
@@ -213,26 +222,27 @@ const CustomerBillingCreateForm = () => {
 
   const validateForm = () => {
     if (!selectedProjectNo) {
-      Alert.alert("Please select a project number.");
+      Alert.alert("Validation Error", "Please select a project number.");
+      projectNoRef.current?.focus();
       return false;
     }
     if (!selectedSubProject) {
-      Alert.alert("Please select a sub project.");
+      Alert.alert("Validation Error", "Please select a sub project.");
+      subProjectRef.current?.focus();
       return false;
     }
 
     // Validate scope items
     for (const item of scopeItems) {
-      if (!item.certifiedQty || item.certifiedQty <= 0) {
+      if (
+        item.certifiedQty &&
+        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+      ) {
         Alert.alert(
-          `Please enter certified quantity for scope item: ${item.scopes}`
-        );
-        return false;
-      }
-      if (item.certifiedQty > item.scopeQuantity) {
-        Alert.alert(
+          "Validation Error",
           `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
         );
+        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
         return false;
       }
     }
@@ -330,6 +340,27 @@ const CustomerBillingCreateForm = () => {
     }
   }, [selectedSubProject]);
 
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert("Hold on!", "Are you sure you want to go back?", [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel",
+        },
+        { text: "YES", onPress: () => router.back() },
+      ]);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   return (
     <View style={{ flex: 1 }}>
       <Loader />
@@ -341,6 +372,7 @@ const CustomerBillingCreateForm = () => {
             <RequiredLabel label="Project Number" />
             <View style={styles.pickerContainer}>
               <Picker
+                ref={projectNoRef}
                 selectedValue={selectedProjectNo}
                 onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
                 style={styles.picker}
@@ -361,6 +393,7 @@ const CustomerBillingCreateForm = () => {
             <RequiredLabel label="Sub Project" />
             <View style={styles.pickerContainer}>
               <Picker
+                ref={subProjectRef}
                 selectedValue={selectedSubProject}
                 onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
                 style={styles.picker}
@@ -440,9 +473,18 @@ const CustomerBillingCreateForm = () => {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Certified Qty</Text>
                 <TextInput
+                  ref={(el) => {
+                    if (el) {
+                      scopeItemRefs.current[item.id] = {
+                        certifiedQty: el,
+                      };
+                    }
+                  }}
                   style={[
                     styles.input,
-                    item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                    item.certifiedQty &&
+                    item.certifiedQty >
+                      item.scopeQuantity - item.scopeCumQuantity
                       ? styles.errorInput
                       : null,
                   ]}

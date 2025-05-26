@@ -8,8 +8,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Buffer } from "buffer";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -92,6 +93,12 @@ const BuilderEditForm = ({
     type: "info",
   });
 
+  // Add refs for input fields
+  const scopeItemRefs = useRef<{
+    [key: number]: { certifiedQty: TextInput | null };
+  }>({});
+  const remarksRef = useRef<TextInput>(null);
+
   const RequiredLabel = ({ label }: { label: string }) => (
     <Text style={styles.label}>
       {label}
@@ -132,7 +139,7 @@ const BuilderEditForm = ({
       prevItems.map((item) => {
         if (item.id === scopeId) {
           const balanceQty =
-            item.scopeQuantity - (item.scopeCumQuantity + numValue);
+            item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
             certifiedQty: numValue,
@@ -157,32 +164,37 @@ const BuilderEditForm = ({
 
   const validateForm = () => {
     if (!soNumber) {
-      setError("Please enter SO Number");
+      Alert.alert("Validation Error", "Please enter SO Number");
       return false;
     }
     if (!runningNumber) {
-      setError("Please enter Running Number");
+      Alert.alert("Validation Error", "Please enter Running Number");
       return false;
     }
     if (!date) {
-      setError("Please enter Running Account Date");
+      Alert.alert("Validation Error", "Please enter Running Account Date");
       return false;
     }
 
     // Validate scope items
     for (const item of scopeItems) {
-      if (!item.certifiedQty || item.certifiedQty <= 0) {
-        setError(
-          `Please enter certified quantity for scope item: ${item.scopes}`
-        );
-        return false;
-      }
-      if (item.certifiedQty > item.scopeQuantity) {
-        setError(
+      if (
+        item.certifiedQty &&
+        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+      ) {
+        Alert.alert(
+          "Validation Error",
           `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
         );
+        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
         return false;
       }
+    }
+
+    if (!flowRemarks.trim()) {
+      Alert.alert("Validation Error", "Please enter remarks.");
+      remarksRef.current?.focus();
+      return false;
     }
 
     return true;
@@ -393,9 +405,17 @@ const BuilderEditForm = ({
             <View style={styles.formGroup}>
               <Text style={styles.label}>Certified Qty</Text>
               <TextInput
+                ref={(el) => {
+                  if (el) {
+                    scopeItemRefs.current[item.id] = {
+                      certifiedQty: el,
+                    };
+                  }
+                }}
                 style={[
                   styles.input,
-                  item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                  item.certifiedQty &&
+                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
                     ? styles.errorInput
                     : null,
                 ]}
@@ -425,6 +445,7 @@ const BuilderEditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Remarks</Text>
           <TextInput
+            ref={remarksRef}
             style={[styles.input, styles.textArea]}
             placeholder="Enter Remarks"
             multiline

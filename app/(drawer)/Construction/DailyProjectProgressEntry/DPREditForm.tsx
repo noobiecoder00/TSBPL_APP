@@ -9,8 +9,10 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { Buffer } from "buffer";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  BackHandler,
   Platform,
   ScrollView,
   StyleSheet,
@@ -205,6 +207,30 @@ const DPREditForm = ({
     SubProjectVendor[]
   >([]);
 
+  // Add refs for input fields
+  const dprDateRef = useRef<View>(null);
+  const totalSupplyWeightRef = useRef<TextInput>(null);
+  const keyHighlightProjectRef = useRef<TextInput>(null);
+  const keyIssuesClientRef = useRef<TextInput>(null);
+  const keyIssuesTBSPLRef = useRef<TextInput>(null);
+  const remarkRef = useRef<TextInput>(null);
+  const lostTimeRef = useRef<TextInput>(null);
+  const manpowerRefs = {
+    "Site In Charge": useRef<TextInput>(null),
+    Engineer: useRef<TextInput>(null),
+    Supervisor: useRef<TextInput>(null),
+    "Safety Officer": useRef<TextInput>(null),
+    Fitter: useRef<TextInput>(null),
+    Rigger: useRef<TextInput>(null),
+    Electrician: useRef<TextInput>(null),
+    "Operators & Drivers": useRef<TextInput>(null),
+    Helper: useRef<TextInput>(null),
+  };
+  const scopeItemRefs = useRef<{
+    [key: number]: { vendor: Picker<string>; certifiedQty: TextInput | null };
+  }>({});
+  const equipmentRefs = useRef<{ [key: number]: TextInput | null }>({});
+
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -225,7 +251,7 @@ const DPREditForm = ({
       prevItems.map((item) => {
         if (item.id === scopeId) {
           const balanceQty =
-            item.scopeQuantity - (item.scopeCumQuantity + numValue);
+            item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
             certifiedQty: numValue,
@@ -246,33 +272,67 @@ const DPREditForm = ({
     );
   };
 
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert("Hold on!", "Are you sure you want to go back?", [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel",
+        },
+        { text: "YES", onPress: () => router.back() },
+      ]);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   const validateForm = () => {
     if (!dprDate) {
-      setError("Please select a DPR date.");
+      Alert.alert("Validation Error", "Please select a DPR date.");
+      setShowDatePicker(true);
       return false;
     }
     if (!totalSupplyWeight.trim()) {
-      setError("Please enter total supply weight.");
+      Alert.alert("Validation Error", "Please enter total supply weight.");
+      totalSupplyWeightRef.current?.focus();
       return false;
     }
     if (!keyHighlightProject.trim()) {
-      setError("Please enter key highlights for the project.");
+      Alert.alert(
+        "Validation Error",
+        "Please enter key highlights for the project."
+      );
+      keyHighlightProjectRef.current?.focus();
       return false;
     }
     if (!keyIssuesClient.trim()) {
-      setError("Please enter key issues for the client.");
+      Alert.alert(
+        "Validation Error",
+        "Please enter key issues for the client."
+      );
+      keyIssuesClientRef.current?.focus();
       return false;
     }
     if (!keyIssuesTBSPL.trim()) {
-      setError("Please enter key issues for TBSPL.");
+      Alert.alert("Validation Error", "Please enter key issues for TBSPL.");
+      keyIssuesTBSPLRef.current?.focus();
       return false;
     }
     if (!remark.trim()) {
-      setError("Please enter remarks.");
+      Alert.alert("Validation Error", "Please enter remarks.");
+      remarkRef.current?.focus();
       return false;
     }
     if (!lostTime.trim()) {
-      setError("Please enter lost time.");
+      Alert.alert("Validation Error", "Please enter lost time.");
+      lostTimeRef.current?.focus();
       return false;
     }
 
@@ -280,9 +340,11 @@ const DPREditForm = ({
     const manpowerFields = Object.entries(manpower);
     for (const [key, value] of manpowerFields) {
       if (!value.trim()) {
-        setError(
+        Alert.alert(
+          "Validation Error",
           `Please enter count for ${key.replace(/([A-Z])/g, " $1").trim()}`
         );
+        manpowerRefs[key as keyof typeof manpowerRefs].current?.focus();
         return false;
       }
     }
@@ -290,19 +352,22 @@ const DPREditForm = ({
     // Validate scope items
     for (const item of scopeItems) {
       if (!item.selectedVendor) {
-        setError(`Please select a vendor for scope item: ${item.scopes}`);
-        return false;
-      }
-      if (!item.certifiedQty || item.certifiedQty <= 0) {
-        setError(
-          `Please enter certified quantity for scope item: ${item.scopes}`
+        Alert.alert(
+          "Validation Error",
+          `Please select a vendor for scope item: ${item.scopes}`
         );
+        scopeItemRefs.current[item.id]?.vendor?.focus();
         return false;
       }
-      if (item.certifiedQty > item.scopeQuantity) {
-        setError(
+      if (
+        item.certifiedQty &&
+        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+      ) {
+        Alert.alert(
+          "Validation Error",
           `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
         );
+        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
         return false;
       }
     }
@@ -310,9 +375,11 @@ const DPREditForm = ({
     // Validate equipment quantities
     for (const equipment of equipments) {
       if (!equipment.count || equipment.count <= 0) {
-        setError(
+        Alert.alert(
+          "Validation Error",
           `Please enter count for equipment: ${equipment.equipmentName}`
         );
+        equipmentRefs.current[equipment.id]?.focus();
         return false;
       }
     }
@@ -322,6 +389,7 @@ const DPREditForm = ({
 
   const handleUpdate = async () => {
     if (!validateForm()) {
+      console.log("Form is not valid");
       return;
     }
 
@@ -466,6 +534,7 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Total Supply Weight</Text>
           <TextInput
+            ref={totalSupplyWeightRef}
             style={styles.input}
             placeholder="Enter total supply weight"
             value={totalSupplyWeight}
@@ -492,6 +561,15 @@ const DPREditForm = ({
               <Text style={styles.label}>Vendor Code *</Text>
               <View style={styles.pickerContainer}>
                 <Picker
+                  ref={(el) => {
+                    if (el) {
+                      scopeItemRefs.current[item.id] = {
+                        vendor: el,
+                        certifiedQty:
+                          scopeItemRefs.current[item.id]?.certifiedQty || null,
+                      };
+                    }
+                  }}
                   selectedValue={item.selectedVendor?.toString()}
                   onValueChange={(value) => {
                     setScopeItems((prevItems) =>
@@ -533,9 +611,18 @@ const DPREditForm = ({
             <View style={styles.formGroup}>
               <Text style={styles.label}>Certified Qty</Text>
               <TextInput
+                ref={(el) => {
+                  if (el) {
+                    scopeItemRefs.current[item.id] = {
+                      ...(scopeItemRefs.current[item.id] || {}),
+                      certifiedQty: el,
+                    };
+                  }
+                }}
                 style={[
                   styles.input,
-                  item.certifiedQty && item.certifiedQty > item.scopeQuantity
+                  item.certifiedQty &&
+                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
                     ? styles.errorInput
                     : null,
                 ]}
@@ -564,6 +651,7 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Key Highlights - Project</Text>
           <TextInput
+            ref={keyHighlightProjectRef}
             style={styles.textArea}
             multiline
             numberOfLines={3}
@@ -576,6 +664,7 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Key Issues - Client</Text>
           <TextInput
+            ref={keyIssuesClientRef}
             style={styles.textArea}
             multiline
             numberOfLines={3}
@@ -588,6 +677,7 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Key Issues - TBSPL</Text>
           <TextInput
+            ref={keyIssuesTBSPLRef}
             style={styles.textArea}
             multiline
             numberOfLines={3}
@@ -600,6 +690,7 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Remark</Text>
           <TextInput
+            ref={remarkRef}
             style={styles.textArea}
             multiline
             numberOfLines={3}
@@ -612,9 +703,9 @@ const DPREditForm = ({
         <View style={styles.formGroup}>
           <Text style={styles.label}>Lost Time</Text>
           <TextInput
+            ref={lostTimeRef}
             style={styles.input}
             placeholder="Enter lost time"
-            keyboardType="numeric"
             value={lostTime}
             onChangeText={setLostTime}
           />
@@ -635,6 +726,7 @@ const DPREditForm = ({
                 {key.replace(/([A-Z])/g, " $1").trim()}
               </Text>
               <TextInput
+                ref={manpowerRefs[key]}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
                 placeholder="0"
@@ -660,6 +752,11 @@ const DPREditForm = ({
             <View key={equipment.id} style={styles.tableRow}>
               <Text style={styles.tableCell}>{equipment.equipmentName}</Text>
               <TextInput
+                ref={(el) => {
+                  if (el) {
+                    equipmentRefs.current[equipment.id] = el;
+                  }
+                }}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
                 placeholder="0"

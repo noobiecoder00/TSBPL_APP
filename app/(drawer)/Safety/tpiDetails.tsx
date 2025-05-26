@@ -138,12 +138,13 @@ const TpiDetails = () => {
     tpiExpiryDate: "",
   });
 
-  const [selectedTpiDocument, setSelectedTpiDocument] =
-    useState<FileData | null>(null);
+  const [selectedTpiDocuments, setSelectedTpiDocuments] = useState<FileData[]>(
+    []
+  );
 
   const resetForm = () => {
     setTpiExpiryDate(null);
-    setSelectedTpiDocument(null);
+    setSelectedTpiDocuments([]);
     setTpiFormData({
       equipmentId: "",
       tpiExpiryDate: "",
@@ -264,24 +265,29 @@ const TpiDetails = () => {
     }
   };
 
-  const pickDocument = async (setFile: (file: FileData | null) => void) => {
+  const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "*/*",
         copyToCacheDirectory: true,
+        multiple: true, // Enable multiple file selection
       });
 
       if (result.canceled === false) {
-        const asset = result.assets[0];
-        setFile({
+        const newFiles = result.assets.map((asset) => ({
           uri: asset.uri,
           name: asset.name,
           type: asset.mimeType || "application/octet-stream",
-        });
+        }));
+        setSelectedTpiDocuments((prev) => [...prev, ...newFiles]);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick document");
+      Alert.alert("Error", "Failed to pick documents");
     }
+  };
+
+  const removeDocument = (index: number) => {
+    setSelectedTpiDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleViewDocument = async (file: FileData) => {
@@ -339,20 +345,21 @@ const TpiDetails = () => {
         }
       });
 
-      if (selectedTpiDocument) {
+      // Add multiple files
+      selectedTpiDocuments.forEach((file, index) => {
         const fileToUpload = {
-          uri: selectedTpiDocument.uri,
-          type: selectedTpiDocument.type,
-          name: selectedTpiDocument.name,
+          uri: file.uri,
+          type: file.type,
+          name: file.name,
         };
-        multipartFormData.append("proofDocuments", fileToUpload as any);
-      }
+        multipartFormData.append(`proofDocuments`, fileToUpload as any);
+      });
 
       console.log("Form data being sent:", {
         EquipmentId: formDataToSend.EquipmentId,
         TPIExpiryDate: formDataToSend.TPIExpiryDate,
         CreatedBy: formDataToSend.CreatedBy,
-        hasDocument: !!selectedTpiDocument,
+        filesCount: selectedTpiDocuments.length,
       });
 
       const response = await httpClient.post(
@@ -845,10 +852,26 @@ const TpiDetails = () => {
           <View style={{ marginTop: 2 }}>
             <CustomButton
               title="Upload"
-              onPress={() => pickDocument(setSelectedTpiDocument)}
+              onPress={pickDocument}
               variant="primary"
             />
-            {selectedTpiDocument && <FilePreview file={selectedTpiDocument} />}
+            <View style={styles.filePreviewContainer}>
+              {selectedTpiDocuments.map((file, index) => (
+                <View key={index} style={styles.filePreviewWrapper}>
+                  <FilePreview file={file} />
+                  <TouchableOpacity
+                    style={styles.removeFileButton}
+                    onPress={() => removeDocument(index)}
+                  >
+                    <MaterialIcons
+                      name="close"
+                      size={20}
+                      color={COLORS.error}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
       </View>
@@ -1123,5 +1146,25 @@ const styles = StyleSheet.create({
   },
   required: {
     color: "red",
+  },
+  filePreviewContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  filePreviewWrapper: {
+    position: "relative",
+    width: "30%",
+    aspectRatio: 1,
+  },
+  removeFileButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 4,
+    zIndex: 1,
   },
 });

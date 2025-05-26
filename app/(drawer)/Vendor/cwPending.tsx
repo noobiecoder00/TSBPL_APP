@@ -3,6 +3,7 @@ import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
+import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,7 +11,12 @@ import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
   FlatList,
+  Image,
+  Linking,
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,6 +41,8 @@ const cwPending = () => {
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [gatepassImage, setGatepassImage] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const PAGE_SIZE = 10;
 
@@ -79,6 +87,43 @@ const cwPending = () => {
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
+    }
+  };
+
+  const generateGatepass = async (id: string) => {
+    dispatch(showLoading());
+    try {
+      const response = await httpClient.get(
+        `${API_ENDPOINTS.CW.GENERATE_GATEPASS}?CwId=${id}`
+      );
+
+      const gatepassTemplate = response.data?.data.gatepassTemplate;
+      // decode the base64 image
+      const decodedTemplate = Buffer.from(gatepassTemplate, "base64").toString(
+        "utf-8"
+      );
+      setGatepassImage(`data:image/png;base64,${gatepassTemplate}`);
+      setIsModalVisible(true);
+    } catch (error) {
+      console.error("Error fetching CW data:", error);
+    } finally {
+      dispatch(hideLoading());
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!gatepassImage) return;
+
+    try {
+      const supported = await Linking.canOpenURL(gatepassImage);
+      if (supported) {
+        await Linking.openURL(gatepassImage);
+      } else {
+        Alert.alert("Error", "Cannot download this file");
+      }
+    } catch (error) {
+      console.error("Error downloading gatepass:", error);
+      Alert.alert("Error", "Failed to download gatepass");
     }
   };
 
@@ -133,6 +178,15 @@ const cwPending = () => {
               .join(", ")}
           />
         </View>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => {
+            // Open a modal to generate gatepass
+            generateGatepass(item.id);
+          }}
+        >
+          <Text style={styles.buttonText}>Generate Gatepass</Text>
+        </TouchableOpacity>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -153,6 +207,39 @@ const cwPending = () => {
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsModalVisible(false)}
+            >
+              <MaterialIcons name="close" size={24} color="#000" />
+            </TouchableOpacity>
+
+            {gatepassImage && (
+              <Image
+                source={{ uri: gatepassImage }}
+                style={styles.gatepassImage}
+                resizeMode="contain"
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={handleDownload}
+            >
+              <Text style={styles.downloadButtonText}>Download</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -226,6 +313,56 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 16,
+  },
+  button: {
+    backgroundColor: COLORS.success,
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: SIZES.medium,
+    fontWeight: "600",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 20,
+    width: Dimensions.get("window").width * 0.9,
+    maxHeight: Dimensions.get("window").height * 0.8,
+    alignItems: "center",
+  },
+  closeButton: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
+  },
+  gatepassImage: {
+    width: "100%",
+    height: Dimensions.get("window").height * 0.6,
+    marginVertical: 20,
+  },
+  downloadButton: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    width: "100%",
+    alignItems: "center",
+  },
+  downloadButtonText: {
+    color: "#fff",
+    fontSize: SIZES.medium,
+    fontWeight: "600",
   },
 });
 

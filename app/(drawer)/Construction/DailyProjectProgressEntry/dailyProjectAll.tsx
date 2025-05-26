@@ -53,37 +53,10 @@ const dailyProjectAll = () => {
           length: PAGE_SIZE,
           search: "",
           meId: "0",
-        }
+        },
+        { timeout: 10000 }
       );
-      //   {
-      //     "success": true,
-      //     "message": "Fetched successfully",
-      //     "data": {
-      //         "draw": 2,
-      //         "recordsTotal": 1,
-      //         "recordsFiltered": 1,
-      //         "data": [
-      //             {
-      //                 "serialNo": 1,
-      //                 "dpR_Number": "DPR/05-25/00001",
-      //                 "dpR_Date": "22-11-2014",
-      //                 "projectNo": "BP3-2826",
-      //                 "projectName": "TATA STEEL (JSR)",
-      //                 "subProject": "Karyn Hutchinson",
-      //                 "regStatus": "IN PROGRESS",
-      //                 "status": "INACTIVE",
-      //                 "pendingWith": [
-      //                     {
-      //                         "name": "Construction Manager",
-      //                         "roleName": "Construction Manager"
-      //                     }
-      //                 ],
-      //                 "createdDateTime": "10-05-2025 06:20 PM",
-      //                 "id": "NA=="
-      //             }
-      //         ]
-      //     }
-      // }
+      console.log("response", response);
       const items = response.data?.data?.data ?? [];
       setData((prev) => [...prev, ...items]);
       setStart((prev) => prev + PAGE_SIZE);
@@ -127,12 +100,22 @@ const dailyProjectAll = () => {
           <InfoRow
             label="Reg. Status"
             value={item.regStatus}
-            valueStyle={styles.statusInProgress}
+            valueStyle={
+              item.regStatus === "IN PROGRESS"
+                ? styles.statusInProgress
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={styles.statusInactive}
+            valueStyle={
+              item.status === "ACTIVE"
+                ? styles.statusActive
+                : item.status === "INACTIVE"
+                ? styles.statusInactive
+                : styles.statusCompleted
+            }
           />
           <InfoRow
             label="Pending with"
@@ -231,6 +214,12 @@ const styles = StyleSheet.create({
   },
   statusInactive: {
     color: "#FF4444",
+  },
+  statusActive: {
+    color: "#008000",
+  },
+  statusCompleted: {
+    color: "#008000",
   },
   separator: {
     height: 16,

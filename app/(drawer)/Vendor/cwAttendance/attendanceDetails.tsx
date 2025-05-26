@@ -1,17 +1,15 @@
 import { hideLoading, showLoading } from "@/app/store/loaderSlice";
 import { CustomAlert } from "@/components/CustomAlert";
-import { CustomButton } from "@/components/CustomButton";
 import FilePreview from "@/components/FilePreview";
 import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
 import httpClient, { baseURL } from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -22,10 +20,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RadioButton } from "react-native-paper";
+import { Switch } from "react-native-paper";
 import { useDispatch } from "react-redux";
-import CustomerEditForm from "./CustomerEditForm";
-// import DPREditForm from "./DPREditForm";
+
 interface ProjectNo {
   value: number;
   text: string;
@@ -43,74 +40,164 @@ interface FileData {
   type: string;
 }
 
-interface SubProject {
+interface AttendanceItem {
   id: number;
-  buildingName: string;
-}
-
-interface ScopeItem {
-  id: number;
-  dailyProjectProgeessId: number;
-  vendorId: number;
-  vendor: {
-    id: number;
-    vendorCode: string;
-    vendorName: string;
-  };
-  subprojectScopeId: number;
-  subProjectScope: {
-    scopeUOMName: string;
-  };
-  scopeName: string;
-  scopeQty: number;
-  scopeCummulativeQty: number;
-  scopeCertifiedQty: number;
-  scopeBalancedQty: number;
+  cwId: number;
+  cwName: string;
+  inTime: string;
+  isChecked: number;
+  outTime: string;
+  workingHours: string;
 }
 
 interface ProjectDetails {
   id: number;
   projectId: number;
-  project: {
+  projectMaster: {
     projectName: string;
     projectNumber: string;
   };
-  subProjectId: number;
-  subProject: {
-    dO_Number: string;
+  subProjectMaster: {
+    subProjectName: string;
   };
-  jmR_Number: string;
-  sl: number;
-  jmR_Date: string;
-  createdBy: number;
+  vendorMaster: {
+    vendorCode: string;
+    vendorName: string;
+  };
   createdDateTime: string;
-  updatedBy: number | null;
-  updatedDateTime: string | null;
-  regStatus: string;
-  status: string;
 }
 
 interface UserData {
   id: string;
 }
 
-interface ApiEquipment {
-  id: number;
-  dailyProjectProgeessId: number;
-  subprojectEquipmentId: number;
-  subProjectEquipments: {
-    id: number;
-    subProjectId: number;
-    equipmentId: number;
-    equipmentMaster: {
-      id: number;
-      equipmentName: string;
-    };
-  };
-  count: number;
+// Add new interface for attendance action
+interface AttendanceActionProps {
+  item: AttendanceItem;
+  isSee: boolean;
+  parentId: number | null;
+  level: number | null;
+  onStatusChange: (success: boolean, message: string) => void;
 }
 
-const CustomerBillingDetails = () => {
+// Add new component for attendance action
+const AttendanceAction: React.FC<AttendanceActionProps> = ({
+  item,
+  isSee,
+  parentId,
+  level,
+  onStatusChange,
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isApproved, setIsApproved] = useState(item.isChecked === 1);
+  const dispatch = useDispatch();
+
+  // Update local state when item changes
+  useEffect(() => {
+    setIsApproved(item.isChecked === 1);
+  }, [item.isChecked]);
+
+  const handleToggle = async (value: boolean) => {
+    if (!parentId) return;
+
+    // Add level validation
+    if (level !== 1) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await httpClient.post(
+        API_ENDPOINTS.ATTENDANCE.UPDATE_ATTENDANCE,
+        {
+          parentId: parentId.toString(),
+          childId: item.id.toString(),
+          cwId: item.cwId.toString(),
+          isApproved: value,
+        }
+      );
+
+      if (response.data.success) {
+        setIsApproved(value); // Update local state on success
+        onStatusChange(
+          true,
+          response.data.message || "Attendance status updated successfully"
+        );
+      } else {
+        setIsApproved(!value); // Revert local state on failure
+        onStatusChange(
+          false,
+          response.data.message || "Failed to update attendance status"
+        );
+      }
+    } catch (error: any) {
+      setIsApproved(!value); // Revert local state on error
+      onStatusChange(
+        false,
+        error.response?.data?.message || "Failed to update attendance status"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: number) => {
+    switch (status) {
+      case 0:
+        return COLORS.error;
+      case 1:
+        return COLORS.success;
+      default:
+        return COLORS.warning;
+    }
+  };
+
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return "Rejected";
+      case 1:
+        return "Approved";
+      default:
+        return "Pending";
+    }
+  };
+
+  if (isSee) {
+    return (
+      <View style={styles.actionContainer}>
+        <View style={styles.toggleContainer}>
+          <Text style={[styles.toggleLabel, { color: COLORS.error }]}>
+            Reject
+          </Text>
+          <Switch
+            value={isApproved}
+            onValueChange={handleToggle}
+            disabled={isLoading || level !== 1}
+            color={COLORS.success}
+            style={[styles.toggleSwitch, level !== 1 && { opacity: 0.5 }]}
+          />
+          <Text style={[styles.toggleLabel, { color: COLORS.success }]}>
+            Approve
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.statusContainer,
+        { backgroundColor: getStatusColor(item.isChecked) },
+      ]}
+    >
+      <Text style={styles.statusText}>{getStatusText(item.isChecked)}</Text>
+    </View>
+  );
+};
+
+const AttendanceDetails = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const { id } = useLocalSearchParams();
@@ -120,14 +207,9 @@ const CustomerBillingDetails = () => {
   const [tabUserRoleName, setTabUserRoleName] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [jmrDate, setJmrDate] = useState(new Date());
-  const [projectNos, setProjectNos] = useState<ProjectNo[]>([]);
-  const [selectedProjectNo, setSelectedProjectNo] = useState<number | null>(
-    null
-  );
-  const [subProjects, setSubProjects] = useState<SubProject[]>([]);
-  const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
-    null
-  );
+  const [totalIn, setTotalIn] = useState<string | null>(null);
+  const [totalOut, setTotalOut] = useState<string | null>(null);
+  const [avgWorkingHours, setAvgWorkingHours] = useState<string | null>(null);
   const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(
     null
   );
@@ -135,7 +217,7 @@ const CustomerBillingDetails = () => {
   const [updatedBy, setUpdatedBy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [scopeItems, setScopeItems] = useState<ScopeItem[]>([]);
+  const [attendanceItems, setAttendanceItems] = useState<AttendanceItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -160,8 +242,8 @@ const CustomerBillingDetails = () => {
     escalationDate: "",
   });
   const [level, setLevel] = useState<number | null>(null);
-  const [customerMasterFlow, setCustomerMasterFlow] = useState<any[]>([]);
-  const [customerFlowId, setCustomerFlowId] = useState<number | null>(null);
+  const [attendanceMasterFlow, setAttendanceMasterFlow] = useState<any[]>([]);
+  const [attendanceFlowId, setAttendanceFlowId] = useState<number | null>(null);
   const [autoSlgTargetDate, setAutoSlgTargetDate] = useState<string | null>(
     null
   );
@@ -207,8 +289,8 @@ const CustomerBillingDetails = () => {
 
   const resetStates = () => {
     setProjectDetails(null);
-    setCustomerMasterFlow([]);
-    setCustomerFlowId(null);
+    setAttendanceMasterFlow([]);
+    setAttendanceFlowId(null);
     setIsSee(false);
     setActionFormData({
       actionTaken: "",
@@ -241,23 +323,24 @@ const CustomerBillingDetails = () => {
       dispatch(showLoading());
       setError(null);
       const response = await httpClient.get(
-        `${API_ENDPOINTS.CUSTOMER_BILLING_DETAILS.DETAILS}?id=${encodedId}&UserId=${encodedUserId}`
+        `${API_ENDPOINTS.ATTENDANCE.DETAILS}?id=${encodedId}&UserId=${encodedUserId}`
       );
 
-      const projectDetails = response.data.customer_Bill_Entry;
-      const scopeItems = response.data.customer_Bill_Entry_Scopes;
+      const fetchdAttendanceDetails = response.data.cW_AttendanceSheet_Parent;
+      const attendanceItems = response.data.attendanceSheet;
       const createdBy = response.data.createdByName;
       const updatedBy = response.data.updatedByName;
 
-      const customerMasterFlow = response.data.customer_Bill_EntryFlows;
-      const customerFlowId = response.data.customer_Bill_EntryFlowLatest?.id;
-      setCustomerMasterFlow(customerMasterFlow);
-      setCustomerFlowId(customerFlowId);
+      const attendanceMasterFlow = response.data.cW_Attendance_Flows;
+      const attendanceFlowId =
+        response.data.cW_Attendance_Flow_latest?.cw_attendance_sheet_Parent_Id;
+      setAttendanceMasterFlow(attendanceMasterFlow);
+      setAttendanceFlowId(attendanceFlowId);
       setCreatedBy(createdBy);
       setUpdatedBy(updatedBy);
       if (response.data.isSee === true) {
         setIsSee(true);
-        setLevel(response.data.customer_Bill_EntryFlowLatest?.level);
+        setLevel(response.data.cW_Attendance_Flow_latest?.level);
         setTabUserName(response.data.tabUserName);
         setTabUserRoleName(response.data.tabUserRoleName);
 
@@ -285,39 +368,35 @@ const CustomerBillingDetails = () => {
       }
 
       // Set project details
-      setProjectDetails(projectDetails);
-      setJmrDate(new Date(projectDetails.jmR_Date));
+      setProjectDetails(fetchdAttendanceDetails);
+      setTotalIn(response.data.totalIn?.toString() || "");
+      setTotalOut(response.data.totalOut?.toString() || "");
+      setAvgWorkingHours(
+        response.data.averageWorkingDuration?.toString() || ""
+      );
 
-      //   "customer_Bill_Entry_Scopes": [
+      //   "attendanceSheet": [
       //     {
-      //         "id": 10,
-      //         "customerId": 6,
-      //         "subProjectScopeId": 9,
-      //         "subProjectScope": {
-      //             "scopeUOMName": "M2"
-      //         },
-      //         "scopeName": "Purlin & Sheeting",
-      //         "scopeQty": 12000,
-      //         "scopeCummulativeQty": 0,
-      //         "scopeCertifiedQty": 61,
-      //         "scopeBalancedQty": 11939
+      //         "id": 1,
+      //         "cwId": 9,
+      //         "cwName": "ABC 123",
+      //         "inTime": "04:34 PM",
+      //         "isChecked": 2,
+      //         "outTime": "04:36 PM",
+      //         "workingHours": "0.02"
       //     },
       //     {
-      //         "id": 11,
-      //         "customerId": 6,
-      //         "subProjectScopeId": 10,
-      //         "subProjectScope": {
-      //             "scopeUOMName": "M2"
-      //         },
-      //         "scopeName": "Sheeting service",
-      //         "scopeQty": 11000,
-      //         "scopeCummulativeQty": 0,
-      //         "scopeCertifiedQty": 16,
-      //         "scopeBalancedQty": 10984
+      //         "id": 2,
+      //         "cwId": 10,
+      //         "cwName": "Robin Lang",
+      //         "inTime": "05:09 PM",
+      //         "isChecked": 2,
+      //         "outTime": "05:10 PM",
+      //         "workingHours": "0.02"
       //     }
       // ],
-      // Set scope items
-      setScopeItems(scopeItems);
+      // Set attendance items
+      setAttendanceItems(attendanceItems);
     } catch (error) {
       console.error("Error fetching project details:", error);
       setError("Failed to load project details. Please try again.");
@@ -362,7 +441,6 @@ const CustomerBillingDetails = () => {
 
   const validateForm = () => {
     const requiredFields = [
-      { field: "actionTaken", label: "Action Taken" },
       { field: "remarks", label: "Remarks" },
       { field: "observedBy", label: "Observed By" },
       { field: "escalationDate", label: "Escalation Date" },
@@ -403,8 +481,7 @@ const CustomerBillingDetails = () => {
       const formDataToSend = new FormData();
 
       // Add required fields
-      formDataToSend.append("Id", customerFlowId?.toString() || "");
-      formDataToSend.append("Status_to", actionFormData.actionTaken);
+      formDataToSend.append("Id", attendanceFlowId?.toString() || "");
       formDataToSend.append("ActionTaken", actionFormData.remarks);
       formDataToSend.append("AutoSLgTargetDate", autoSlgTargetDate || "");
 
@@ -426,8 +503,10 @@ const CustomerBillingDetails = () => {
         formDataToSend.append("UpdatedBy", encodedUserId);
       }
 
+      console.log("formDataToSend", formDataToSend);
+
       const response = await httpClient.post<DprSubmitResponse>(
-        API_ENDPOINTS.CUSTOMER_BILLING_FLOW_ACTION.FLOW_ACTION,
+        API_ENDPOINTS.ATTENDANCE.FLOW_ACTION,
         formDataToSend,
         {
           headers: {
@@ -442,8 +521,7 @@ const CustomerBillingDetails = () => {
           message: response.data.message,
           type: "success",
           redirect: true,
-          redirectPath:
-            "/(drawer)/Construction/CustomerBilling/CustomerBillingIndex",
+          redirectPath: "/(drawer)/Construction/attendanceView",
           onClose: () => {
             setAlert((prev) => ({ ...prev, visible: false }));
           },
@@ -479,14 +557,14 @@ const CustomerBillingDetails = () => {
     <View style={styles.mainContainer}>
       <Loader />
       <ScrollView style={styles.container}>
-        {/* Project Details Section */}
+        {/* Attendance Details Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Project Details</Text>
+          <Text style={styles.sectionTitle}>Attendance Details</Text>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Project Number</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={projectDetails?.project.projectNumber || ""}
+              value={projectDetails?.projectMaster.projectNumber || ""}
               editable={false}
             />
           </View>
@@ -495,43 +573,52 @@ const CustomerBillingDetails = () => {
             <Text style={styles.label}>Name of Project</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={projectDetails?.project.projectName}
+              value={projectDetails?.projectMaster.projectName}
               editable={false}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>DO Number</Text>
+            <Text style={styles.label}>Vendor Code</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={projectDetails?.subProject.dO_Number || ""}
+              value={projectDetails?.vendorMaster.vendorCode || ""}
               editable={false}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>JMR Number</Text>
+            <Text style={styles.label}>Vendor Name</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={projectDetails?.jmR_Number}
+              value={projectDetails?.vendorMaster.vendorName}
               editable={false}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>JMR Date</Text>
+            <Text style={styles.label}>Total In</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={formatDate(new Date(projectDetails?.jmR_Date || ""))}
+              value={totalIn || ""}
               editable={false}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Created By</Text>
+            <Text style={styles.label}>Total Out</Text>
             <TextInput
               style={[styles.input, styles.disabledInput]}
-              value={createdBy || ""}
+              value={totalOut || ""}
+              editable={false}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Avg Working Hours</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={avgWorkingHours || ""}
               editable={false}
             />
           </View>
@@ -544,115 +631,64 @@ const CustomerBillingDetails = () => {
               editable={false}
             />
           </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Updated By</Text>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={updatedBy || ""}
-              editable={false}
-            />
-          </View>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Updated Date Time</Text>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={
-                projectDetails?.updatedDateTime
-                  ? formatDateTime(projectDetails?.updatedDateTime)
-                  : ""
-              }
-              editable={false}
-            />
-          </View>
         </View>
 
-        {/* Scope Section */}
+        {/* Attendance Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SCOPE</Text>
-          {scopeItems.map((item) => (
-            <View key={item.id} style={styles.scopeItemContainer}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Scope Item</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={`${item.scopeName} (${item.subProjectScope.scopeUOMName})`}
-                  editable={false}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Unit</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={`${item.subProjectScope.scopeUOMName}`}
-                  editable={false}
-                />
+          <Text style={styles.sectionTitle}>Attendance Sheet</Text>
+          {attendanceItems.map((item) => (
+            <View key={item.id} style={styles.attendanceCard}>
+              <View style={styles.cardRow}>
+                <Text style={styles.cardLabel}>CW Name:</Text>
+                <Text style={styles.cardValue}>{item.cwName}</Text>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Scope Qty</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={item.scopeQty.toString()}
-                  editable={false}
-                />
+              <View style={styles.cardRow}>
+                <Text style={styles.cardLabel}>In Time:</Text>
+                <Text style={styles.cardValue}>{item.inTime}</Text>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Cumulative Qty</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={item.scopeCummulativeQty.toString()}
-                  editable={false}
-                />
+              <View style={styles.cardRow}>
+                <Text style={styles.cardLabel}>Out Time:</Text>
+                <Text style={styles.cardValue}>{item.outTime}</Text>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Certified Qty</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.disabledInput,
-                    item.scopeCertifiedQty &&
-                    item.scopeCertifiedQty > item.scopeQty
-                      ? styles.errorInput
-                      : null,
-                  ]}
-                  value={item.scopeCertifiedQty?.toString() || ""}
-                  keyboardType="numeric"
-                />
+              <View style={styles.cardRow}>
+                <Text style={styles.cardLabel}>Working Hours:</Text>
+                <Text style={styles.cardValue}>{item.workingHours}</Text>
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Balance Qty</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={item.scopeBalancedQty?.toString() || "0"}
-                  editable={false}
-                />
+              <View style={styles.cardRow}>
+                <Text style={styles.cardLabel}>Action:</Text>
+                <View style={styles.actionContainer}>
+                  <AttendanceAction
+                    item={item}
+                    isSee={isSee}
+                    parentId={attendanceFlowId}
+                    level={level}
+                    onStatusChange={(success, message) => {
+                      setAlert({
+                        visible: true,
+                        message: message,
+                        type: success ? "success" : "error",
+                        onClose: () => {
+                          setAlert((prev) => ({ ...prev, visible: false }));
+                        },
+                      });
+                    }}
+                  />
+                </View>
               </View>
             </View>
           ))}
         </View>
 
         {/* Action Taken Remarks Section */}
-        {customerMasterFlow && customerMasterFlow.length > 0 && (
+        {attendanceMasterFlow && attendanceMasterFlow.length > 0 && (
           <>
-            {customerMasterFlow.map((flow: any, index: number) => (
+            {attendanceMasterFlow.map((flow: any, index: number) => (
               <View key={flow.id} style={{ padding: 10 }}>
-                <TouchableOpacity
-                  style={
-                    flow.status_to === "approve"
-                      ? styles.successHeader
-                      : flow.status_to === "reject"
-                      ? styles.errorHeader
-                      : flow.status_to === "return"
-                      ? styles.infoHeader
-                      : flow.status_to === "reevaluate"
-                      ? styles.warningHeader
-                      : styles.pendingHeader
-                  }
-                >
+                <TouchableOpacity style={styles.pendingHeader}>
                   <Text style={styles.pendingText}>
                     {flow.userMaster.name} ({flow.roleMaster.roleName}) Remarks
                   </Text>
@@ -662,27 +698,6 @@ const CustomerBillingDetails = () => {
                   <Text style={styles.pendingText}>
                     Auto Forwarded By System
                   </Text>
-                )}
-
-                {flow.level !== 0 && (
-                  <>
-                    <View style={styles.formGroup}>
-                      <Text style={styles.label}>Action Taken</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={
-                          flow.status_to === "approve"
-                            ? "Approved"
-                            : flow.status_to === "reject"
-                            ? "Rejected"
-                            : flow.status_to === "return"
-                            ? "Returned"
-                            : "Re-evaluated"
-                        }
-                        editable={false}
-                      />
-                    </View>
-                  </>
                 )}
 
                 <View style={styles.formGroup}>
@@ -705,220 +720,20 @@ const CustomerBillingDetails = () => {
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Uploaded Document</Text>
-                  {flow.document ? (
+                {flow.document && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Uploaded Document</Text>
                     <FilePreview
                       file={{
-                        uri: `${baseURL}/uploads/Customer_FlowActionfiles/${flow.document}`,
+                        uri: `${baseURL}/uploads/CWAttendancefiles/${flow.document}`,
                         name: flow.document,
                         type: "application/pdf",
                       }}
                     />
-                  ) : (
-                    <Text style={styles.noDocumentsText}>
-                      No Documents Uploaded
-                    </Text>
-                  )}
-                </View>
+                  </View>
+                )}
               </View>
             ))}
-          </>
-        )}
-
-        {/* do below section only if isSee is true and keep in different return block */}
-        {isSee && level !== 0 && (
-          <>
-            {/* Pending With */}
-            <TouchableOpacity activeOpacity={0.8} style={styles.pendingHeader}>
-              <Text style={styles.pendingText}>
-                Pending with {tabUserName || "Unknown User"} (
-                {tabUserRoleName || "Unknown Role"})
-              </Text>
-            </TouchableOpacity>
-
-            {/* Action Taken */}
-            <Text style={styles.label}>Action Taken</Text>
-            <View style={styles.radioGroup}>
-              <View style={styles.radioRow}>
-                <RadioButton
-                  value="approve"
-                  status={
-                    actionFormData.actionTaken === "approve"
-                      ? "checked"
-                      : "unchecked"
-                  }
-                  onPress={() =>
-                    setActionFormData({
-                      ...actionFormData,
-                      actionTaken: "approve",
-                    })
-                  }
-                />
-                <Text style={styles.radioLabel}>Approve</Text>
-              </View>
-
-              {level === 1 && (
-                <>
-                  <View style={styles.radioRow}>
-                    <RadioButton
-                      value="reject"
-                      status={
-                        actionFormData.actionTaken === "reject"
-                          ? "checked"
-                          : "unchecked"
-                      }
-                      onPress={() =>
-                        setActionFormData({
-                          ...actionFormData,
-                          actionTaken: "reject",
-                        })
-                      }
-                    />
-                    <Text style={styles.radioLabel}>Reject</Text>
-                  </View>
-                  <View style={styles.radioRow}>
-                    <RadioButton
-                      value="reevaluate"
-                      status={
-                        actionFormData.actionTaken === "reevaluate"
-                          ? "checked"
-                          : "unchecked"
-                      }
-                      onPress={() =>
-                        setActionFormData({
-                          ...actionFormData,
-                          actionTaken: "reevaluate",
-                        })
-                      }
-                    />
-                    <Text style={styles.radioLabel}>Re-evaluate</Text>
-                  </View>
-                </>
-              )}
-
-              {level && level > 1 && (
-                <View style={styles.radioRow}>
-                  <RadioButton
-                    value="return"
-                    status={
-                      actionFormData.actionTaken === "return"
-                        ? "checked"
-                        : "unchecked"
-                    }
-                    onPress={() =>
-                      setActionFormData({
-                        ...actionFormData,
-                        actionTaken: "return",
-                      })
-                    }
-                  />
-                  <Text style={styles.radioLabel}>Return</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Remarks */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Remarks</Text>
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                value={actionFormData.remarks}
-                onChangeText={(text) =>
-                  setActionFormData({ ...actionFormData, remarks: text })
-                }
-                placeholder="Type Action Taken Details..."
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Upload Document</Text>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={() => pickDocument(setSelectedDocument)}
-              >
-                <Text style={styles.uploadButtonText}>Choose File</Text>
-              </TouchableOpacity>
-              {selectedDocument && <FilePreview file={selectedDocument} />}
-            </View>
-
-            {/* Observed By */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Observed By</Text>
-              <TextInput
-                value={tabUserName || ""}
-                editable={false}
-                style={styles.input}
-              />
-            </View>
-
-            {/* Escalation Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Escalation Date</Text>
-              <TextInput
-                value={autoSlgTargetDate || ""}
-                editable={false}
-                style={styles.input}
-              />
-            </View>
-
-            {/* Submit */}
-            {isSubmitting ? (
-              <View style={styles.buttonContainer}>
-                <View style={styles.buttonWrapper}>
-                  <CustomButton
-                    title="Submitting..."
-                    onPress={() => {}}
-                    variant="primary"
-                  />
-                </View>
-              </View>
-            ) : (
-              <View style={styles.buttonContainer}>
-                <View style={styles.buttonWrapper}>
-                  <CustomButton
-                    title="Submit"
-                    onPress={() => handleSubmit()}
-                    variant="primary"
-                    disabled={isSubmitting}
-                  />
-                </View>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* When level is equal to 0 */}
-        {isSee && level === 0 && (
-          <>
-            {/* Pending With */}
-            <TouchableOpacity activeOpacity={0.8} style={styles.pendingHeader}>
-              <Text style={styles.pendingText}>
-                Pending with {tabUserName || "Unknown User"} (
-                {tabUserRoleName || "Unknown Role"})
-              </Text>
-            </TouchableOpacity>
-
-            <CustomerEditForm
-              id={projectDetails?.id || 0}
-              customerFlowId={customerFlowId || 0}
-              initialData={{
-                projectId: projectDetails?.projectId || 0,
-                projectNumber: projectDetails?.project?.projectNumber || "",
-                subProjectNumber: projectDetails?.subProject?.dO_Number || "",
-                scopeItems: scopeItems.map((item) => ({
-                  id: item.id,
-                  scopeName: item.scopeName,
-                  scopeUOMName: item.subProjectScope.scopeUOMName,
-                  scopeQty: item.scopeQty,
-                  scopeCummulativeQty: item.scopeCummulativeQty,
-                  scopeCertifiedQty: item.scopeCertifiedQty,
-                  scopeBalancedQty: item.scopeBalancedQty,
-                })),
-              }}
-              isSubmitting={isSubmitting}
-            />
           </>
         )}
 
@@ -1121,38 +936,87 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     flex: 1,
   },
-  successHeader: {
+  actionContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 4,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  approveButton: {
     backgroundColor: COLORS.success,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
   },
-  infoHeader: {
-    backgroundColor: COLORS.info,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  errorHeader: {
+  rejectButton: {
     backgroundColor: COLORS.error,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
   },
-  warningHeader: {
-    backgroundColor: COLORS.warning,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+  actionButtonText: {
+    color: COLORS.white,
+    fontWeight: "500",
   },
-  noDocumentsText: {
-    ...FONTS.regular,
-    fontSize: SIZES.small,
-    color: COLORS.gray,
-    fontStyle: "italic",
-    textAlign: "center",
-    marginVertical: 10,
+  statusContainer: {
+    padding: 8,
+    borderRadius: 4,
+    alignItems: "center",
+    minWidth: 100,
+  },
+  statusText: {
+    color: COLORS.white,
+    fontWeight: "500",
+  },
+  attendanceCard: {
+    backgroundColor: "#f5f8ff",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#e0e6f0",
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  cardLabel: {
+    fontWeight: "600",
+    color: COLORS.text,
+    minWidth: 120,
+    fontSize: SIZES.medium,
+    lineHeight: 20,
+  },
+  cardValue: {
+    color: COLORS.text,
+    fontSize: SIZES.medium,
+    flex: 1,
+    flexWrap: "wrap",
+    lineHeight: 20,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  toggleLabel: {
+    fontSize: SIZES.medium,
+    fontWeight: "500",
+  },
+  toggleSwitch: {
+    marginHorizontal: 8,
   },
 });
 
-export default CustomerBillingDetails;
+export default AttendanceDetails;

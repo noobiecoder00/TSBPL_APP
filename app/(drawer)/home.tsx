@@ -35,6 +35,7 @@ export default function Home() {
 
   useEffect(() => {
     if (userData?.force === "Y") {
+      console.log("userData", userData);
       router.push("/changePwd");
     }
   }, [userData]);

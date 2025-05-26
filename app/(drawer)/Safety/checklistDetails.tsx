@@ -83,7 +83,7 @@ interface EquipmentCategoryChecklist {
   checkList: string;
   result?: string;
   remarks?: string;
-  uploadedDocument?: string | null;
+  uploadedDocuments?: FileData[];
 }
 
 const ChecklistDetails = () => {
@@ -110,7 +110,7 @@ const ChecklistDetails = () => {
   });
 
   const [proofUploaded, setProofUploaded] = useState<FileData[]>([]);
-  const [attachments, setAttachments] = useState<FileData | null>(null);
+  const [attachments, setAttachments] = useState<FileData[]>([]);
 
   const [tpiInfoDetails, setTpiInfoDetails] = useState<TpiChecklist[]>([]);
   const [additionalRemarks, setAdditionalRemarks] = useState("");
@@ -162,11 +162,11 @@ const ChecklistDetails = () => {
       ...item,
       result: "",
       remarks: "",
-      uploadedDocument: null,
+      uploadedDocuments: [],
     }));
     setEquipmentCategoryChecklist(resetChecklist);
     setAdditionalRemarks("");
-    setAttachments(null);
+    setAttachments([]);
   };
 
   const formatDate = (date: Date) => {
@@ -207,7 +207,7 @@ const ChecklistDetails = () => {
     useCallback(() => {
       const initialize = async () => {
         setAdditionalRemarks("");
-        setAttachments(null);
+        setAttachments([]);
         try {
           dispatch(showLoading());
           await loadUserData();
@@ -253,9 +253,19 @@ const ChecklistDetails = () => {
       setEquipmentDetails(equipmentDetails);
       setTpiInfoDetails(tpiInfoDetails);
       setChecklistTables(response.data.equipmentFrequencyChecklistTables || []);
-      setEquipmentCategoryChecklist(
-        response.data.equipmentCategoryChecklists || []
+
+      // Initialize uploadedDocuments array for each checklist item
+      const checklists = response.data.equipmentCategoryChecklists || [];
+      const initializedChecklists = checklists.map(
+        (checklist: EquipmentCategoryChecklist) => ({
+          ...checklist,
+          uploadedDocuments: [], // Initialize as empty array
+          result: checklist.result || "",
+          remarks: checklist.remarks || "",
+        })
       );
+      setEquipmentCategoryChecklist(initializedChecklists);
+
       if (equipmentDetails.proofUploadDocuments) {
         const files = equipmentDetails.proofUploadDocuments
           .split(",")
@@ -292,24 +302,33 @@ const ChecklistDetails = () => {
     }
   };
 
-  const pickDocument = async (setFile: (file: FileData | null) => void) => {
+  const pickDocument = async (setFiles: (files: FileData[]) => void) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "*/*",
         copyToCacheDirectory: true,
+        multiple: true,
       });
 
       if (result.canceled === false) {
-        const asset = result.assets[0];
-        setFile({
+        const newFiles = result.assets.map((asset) => ({
           uri: asset.uri,
           name: asset.name,
           type: asset.mimeType || "application/octet-stream",
-        });
+        }));
+
+        setFiles(newFiles);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick document");
+      Alert.alert("Error", "Failed to pick documents");
     }
+  };
+
+  const removeFile = (
+    index: number,
+    setFiles: React.Dispatch<React.SetStateAction<FileData[]>>
+  ) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleViewDocument = async (file: FileData) => {
@@ -408,33 +427,45 @@ const ChecklistDetails = () => {
           checklist.remarks || ""
         );
 
-        // Add uploaded file for each checklist item if exists
-        if (checklist.uploadedDocument) {
-          const fileToUpload = {
-            uri: checklist.uploadedDocument,
-            type: "application/octet-stream",
-            name: checklist.uploadedDocument.split("/").pop() || "",
-          };
-          multipartFormData.append(
-            `ChecklistItems[${index}].UploadFiles`,
-            fileToUpload as any
-          );
+        // Add uploaded files for each checklist item if exists
+        if (
+          checklist.uploadedDocuments &&
+          checklist.uploadedDocuments.length > 0
+        ) {
+          checklist.uploadedDocuments.forEach((file, fileIndex) => {
+            const fileToUpload = {
+              uri: file.uri,
+              type: file.type,
+              name: file.name,
+            };
+            multipartFormData.append(
+              `ChecklistItems[${index}].UploadFiles`,
+              fileToUpload as any
+            );
+          });
         }
       });
 
-      // Add main attachment if exists
-      if (attachments) {
+      // Add main attachments if exist
+      attachments.forEach((file) => {
         const fileToUpload = {
-          uri: attachments.uri,
-          type: attachments.type,
-          name: attachments.name,
+          uri: file.uri,
+          type: file.type,
+          name: file.name,
         };
         multipartFormData.append("Attachments", fileToUpload as any);
-      }
+      });
 
-      console.log("Form data being sent:", formDataToSend);
-      console.log("Checklist items:", equipmentCategoryChecklist);
-      console.log("Attachments:", attachments);
+      console.log("Form data being sent:", {
+        ...formDataToSend,
+        checklistItems: equipmentCategoryChecklist.map((item) => ({
+          name: item.checkList,
+          result: item.result,
+          remarks: item.remarks,
+          filesCount: item.uploadedDocuments?.length || 0,
+        })),
+        attachmentsCount: attachments.length,
+      });
 
       const response = await httpClient.post(
         API_ENDPOINTS.SAFETY.CHECKLIST_SUBMIT,
@@ -963,31 +994,56 @@ const ChecklistDetails = () => {
                 <CustomButton
                   title="Upload"
                   onPress={() => {
-                    const setFile = (file: FileData | null) => {
-                      if (file) {
-                        const updatedChecklist = [
-                          ...equipmentCategoryChecklist,
-                        ];
-                        updatedChecklist[index] = {
-                          ...updatedChecklist[index],
-                          uploadedDocument: file.uri,
-                        };
-                        setEquipmentCategoryChecklist(updatedChecklist);
-                      }
-                    };
-                    pickDocument(setFile);
+                    pickDocument((newFiles: FileData[]) => {
+                      const updatedChecklist = [...equipmentCategoryChecklist];
+                      const currentFiles =
+                        updatedChecklist[index].uploadedDocuments || [];
+                      updatedChecklist[index] = {
+                        ...updatedChecklist[index],
+                        uploadedDocuments: [...currentFiles, ...newFiles],
+                      };
+                      setEquipmentCategoryChecklist(updatedChecklist);
+                    });
                   }}
                   variant="primary"
                 />
-                {checklist.uploadedDocument && (
-                  <FilePreview
-                    file={{
-                      uri: checklist.uploadedDocument,
-                      name: checklist.uploadedDocument.split("/").pop() || "",
-                      type: "application/octet-stream",
-                    }}
-                  />
-                )}
+                <View style={styles.filePreviewContainer}>
+                  {checklist.uploadedDocuments &&
+                  checklist.uploadedDocuments.length > 0 ? (
+                    checklist.uploadedDocuments.map((file, fileIndex) => (
+                      <View key={fileIndex} style={styles.filePreviewWrapper}>
+                        <FilePreview file={file} />
+                        <TouchableOpacity
+                          style={styles.removeFileButton}
+                          onPress={() => {
+                            const updatedChecklist = [
+                              ...equipmentCategoryChecklist,
+                            ];
+                            const currentFiles =
+                              updatedChecklist[index].uploadedDocuments || [];
+                            updatedChecklist[index] = {
+                              ...updatedChecklist[index],
+                              uploadedDocuments: currentFiles.filter(
+                                (_, i) => i !== fileIndex
+                              ),
+                            };
+                            setEquipmentCategoryChecklist(updatedChecklist);
+                          }}
+                        >
+                          <MaterialIcons
+                            name="close"
+                            size={20}
+                            color={COLORS.error}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noDocumentsText}>
+                      No files uploaded
+                    </Text>
+                  )}
+                </View>
               </View>
             </View>
           </View>
@@ -1005,7 +1061,19 @@ const ChecklistDetails = () => {
             onPress={() => pickDocument(setAttachments)}
             variant="primary"
           />
-          {attachments && <FilePreview file={attachments} />}
+          <View style={styles.filePreviewContainer}>
+            {attachments.map((file, index) => (
+              <View key={index} style={styles.filePreviewWrapper}>
+                <FilePreview file={file} />
+                <TouchableOpacity
+                  style={styles.removeFileButton}
+                  onPress={() => removeFile(index, setAttachments)}
+                >
+                  <MaterialIcons name="close" size={20} color={COLORS.error} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -1325,5 +1393,25 @@ const styles = StyleSheet.create({
   },
   required: {
     color: "red",
+  },
+  filePreviewContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  filePreviewWrapper: {
+    position: "relative",
+    width: "30%",
+    aspectRatio: 1,
+  },
+  removeFileButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 4,
+    zIndex: 1,
   },
 });
