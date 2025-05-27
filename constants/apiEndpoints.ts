@@ -74,6 +74,7 @@ SAFETY: {
     DETAILS: "/api/Builderbill/details",
     FLOW_ACTION: "/api/Builder_FlowAction",
     UPDATE: "/api/Builder_Update",
+    SCOPE : "/api/BuilderScope"
   },
 
   // Project No.
@@ -145,6 +146,8 @@ SAFETY: {
   CUSTOMER_BILLING_UPDATE: {
     UPDATE: "/api/Customer_Update",
   },
+
+
 } as const;
 
 // API Response Types

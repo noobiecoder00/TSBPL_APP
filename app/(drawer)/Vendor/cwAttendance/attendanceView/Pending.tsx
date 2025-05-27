@@ -3,8 +3,6 @@ import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -18,47 +16,19 @@ import {
 } from "react-native";
 import { useDispatch } from "react-redux";
 
-interface CustomerBillingItem {
-  serialNo: number;
-  jmR_Number: string;
-  jmR_Date: string;
-  projectNo: string;
-  projectName: string;
-  subProject: string;
-  regStatus: string;
-  status: string;
-  pendingWith: Array<{
-    name: string;
-    roleName: string;
-  }>;
-  createdDateTime: string;
-  id: string;
-}
-
-interface CustomerBillingListResponse {
+interface ListResponse {
   success: boolean;
   message: string;
-  data?: {
-    draw: number;
-    recordsTotal: number;
-    recordsFiltered: number;
-    data: CustomerBillingItem[];
-  };
+  data?: any;
 }
 
-interface UserData {
-  id: string;
-}
-
-const customerBillingPending = () => {
+const Pending = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-  const [data, setData] = useState<CustomerBillingItem[]>([]);
+  const [data, setData] = useState<any[]>([]);
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const PAGE_SIZE = 10;
 
@@ -69,51 +39,21 @@ const customerBillingPending = () => {
     setIsLoading(false);
   };
 
-  const loadUserData = async () => {
-    try {
-      const userDataString = await AsyncStorage.getItem("userData");
-      if (userDataString) {
-        const parsedData = JSON.parse(userDataString);
-        setUserData(parsedData);
-        return parsedData;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      return null;
-    }
-  };
-
   const fetchData = async () => {
     if (!hasMore || isLoading) return;
 
     setIsLoading(true);
     dispatch(showLoading());
-    setError(null);
 
     try {
-      // Ensure we have user data
-      let currentUserData = userData;
-      if (!currentUserData?.id) {
-        currentUserData = await loadUserData();
-        if (!currentUserData?.id) {
-          setError("User data not available");
-          return;
-        }
-      }
-
-      const response = await httpClient.post<CustomerBillingListResponse>(
-        API_ENDPOINTS.CUSTOMER_BILLING.LIST,
+      const response = await httpClient.post<ListResponse>(
+        API_ENDPOINTS.CW.LIST,
         {
           start,
           length: PAGE_SIZE,
           search: "",
-          meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
-            "base64"
-          ),
-          AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
-            "base64"
-          ),
+          meId: "0",
+          status: "pending",
         }
       );
 
@@ -122,7 +62,7 @@ const customerBillingPending = () => {
       setStart((prev) => prev + PAGE_SIZE);
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
-      console.error("Error fetching DPR data:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
@@ -136,12 +76,10 @@ const customerBillingPending = () => {
     }, [])
   );
 
-  const renderItem = ({ item }: { item: CustomerBillingItem }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
-        router.replace(
-          `/(drawer)/Construction/CustomerBilling/customerBillingDetails?id=${item.id}`
-        );
+        router.replace(`/Vendor/CWDetails?id=${item.id}`);
       }}
       activeOpacity={0.85}
     >
@@ -152,40 +90,24 @@ const customerBillingPending = () => {
         style={styles.card}
       >
         <View style={styles.content}>
-          <InfoRow label="JMR Number" value={item.jmR_Number} />
-          <InfoRow label="JMR Date" value={item.jmR_Date} />
-          <InfoRow label="Project No" value={item.projectNo} />
+          <InfoRow label="Project No." value={item.projectNo} />
           <InfoRow label="Project Name" value={item.projectName} />
-          <InfoRow label="Sub Project Name" value={item.subProject} />
-          <InfoRow
-            label="Reg. Status"
-            value={item.regStatus}
-            valueStyle={
-              item.regStatus === "IN PROGRESS"
-                ? styles.statusInProgress
-                : styles.statusCompleted
-            }
-          />
+          <InfoRow label="Sub Project Name" value={item.subProjectName} />
+          <InfoRow label="Vendor" value={item.vendorDetails?.vendorCode} />
+          <InfoRow label="Total In" value={item.totalIn} />
+          <InfoRow label="Total Out" value={item.totalOut} />
           <InfoRow
             label="Status"
             value={item.status}
-            valueStyle={
-              item.status === "ACTIVE"
-                ? styles.statusActive
-                : item.status === "INACTIVE"
-                ? styles.statusInactive
-                : styles.statusCompleted
-            }
+            valueStyle={styles.statusInactive}
           />
           <InfoRow
             label="Pending with"
             value={item.pendingWith
-              ?.map(
-                (p: { name: string; roleName: string }) =>
-                  `${p.name} (${p.roleName})`
-              )
+              ?.map((p: any) => `${p.name} (${p.roleName})`)
               .join(", ")}
           />
+          <InfoRow label="Created Date Time" value={item.createdDateTime} />
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -281,46 +203,6 @@ const styles = StyleSheet.create({
   separator: {
     height: 16,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  errorText: {
-    color: "#FF4444",
-    fontSize: SIZES.medium,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "#fff",
-    fontSize: SIZES.medium,
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  emptyText: {
-    color: "#666",
-    fontSize: SIZES.medium,
-    textAlign: "center",
-  },
-  statusActive: {
-    color: "#008000",
-  },
-  statusCompleted: {
-    color: "#008000",
-  },
 });
 
-export default customerBillingPending;
+export default Pending;

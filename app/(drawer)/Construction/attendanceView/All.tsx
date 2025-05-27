@@ -4,6 +4,7 @@ import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -87,6 +88,9 @@ const All = () => {
           length: PAGE_SIZE,
           search: "",
           meId: "0",
+          AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+            "base64"
+          ),
         },
         { timeout: 10000 }
       );

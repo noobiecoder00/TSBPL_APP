@@ -292,13 +292,27 @@ const DailyProjectCreateForm = () => {
         `${API_ENDPOINTS.SUB_PROJECT_SCOPE.LIST}?id=${selectedSubProject}`
       );
       if (response.data.success) {
-        const items = response.data.data.map((item: any) => ({
-          ...item,
-          certifiedQty: 0,
-          balanceQty: null,
-          selectedVendor: null,
-        }));
-        setScopeItems(items);
+        if (!response.data.data) {
+          setAlert({
+            visible: true,
+            message: response.data.message || "Failed to submit form",
+            type: "error",
+          });
+        } else {
+          const items = response.data.data.map((item: any) => ({
+            ...item,
+            certifiedQty: 0,
+            balanceQty: null,
+            selectedVendor: null,
+          }));
+          setScopeItems(items);
+        }
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit form",
+          type: "error",
+        });
       }
     } catch (error) {
       console.error("Error fetching scope items:", error);
@@ -599,7 +613,15 @@ const DailyProjectCreateForm = () => {
           onPress: () => null,
           style: "cancel",
         },
-        { text: "YES", onPress: () => router.back() },
+        {
+          text: "YES",
+          onPress: () => {
+            backHandler.remove();
+            router.replace(
+              "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex"
+            );
+          },
+        },
       ]);
       return true;
     };
@@ -608,8 +630,6 @@ const DailyProjectCreateForm = () => {
       "hardwareBackPress",
       backAction
     );
-
-    return () => backHandler.remove();
   }, []);
 
   return (
@@ -903,7 +923,7 @@ const DailyProjectCreateForm = () => {
                 ref={manpowerRefs[key]}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
-                placeholder="0"
+                placeholder=""
                 value={manpower[key]}
                 onChangeText={(newValue) =>
                   setManpower((prev) => ({ ...prev, [key]: newValue }))
@@ -931,7 +951,7 @@ const DailyProjectCreateForm = () => {
                 }}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
-                placeholder="0"
+                placeholder=""
                 onChangeText={(value) =>
                   handleEquipmentCountChange(equipment.id, value)
                 }

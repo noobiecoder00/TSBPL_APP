@@ -216,24 +216,42 @@ const BuilderBillingCreateForm = () => {
   };
 
   const fetchScopeItems = async () => {
+    setScopeItems([]);
     try {
       dispatch(showLoading());
       setError(null);
       const response = await httpClient.get(
-        `${API_ENDPOINTS.CUSTOMER_BILLING_SCOPE.LIST}?id=${selectedSubProject}`
+        `${API_ENDPOINTS.BUILDER_BILLING.SCOPE}?SubProjectId=${selectedSubProject}&VendorId=${selectedVendor}`
       );
       if (response.data.success) {
-        const items = response.data.data.map((item: any) => ({
-          ...item,
-          certifiedQty: 0,
-          balanceQty: item.scopeQuantity,
-          selectedVendor: null,
-        }));
-        setScopeItems(items);
+        if (!response.data.data) {
+          setAlert({
+            visible: true,
+            message: response.data.message || "Failed to submit form",
+            type: "error",
+          });
+          setScopeItems([]);
+        } else {
+          const items = response.data.data.map((item: any) => ({
+            ...item,
+            certifiedQty: 0,
+            balanceQty: null,
+            selectedVendor: null,
+          }));
+          setScopeItems(items);
+        }
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit form",
+          type: "error",
+        });
+        setScopeItems([]);
       }
     } catch (error) {
       console.error("Error fetching scope items:", error);
       setError("Failed to load scope items. Please try again.");
+      setScopeItems([]);
     } finally {
       dispatch(hideLoading());
     }
@@ -276,7 +294,16 @@ const BuilderBillingCreateForm = () => {
           onPress: () => null,
           style: "cancel",
         },
-        { text: "YES", onPress: () => router.back() },
+        {
+          text: "YES",
+          onPress: () => {
+            // Remove back handler before navigating
+            backHandler.remove();
+            router.replace(
+              "/(drawer)/Construction/BuilderBilling/BuilderBillingIndex"
+            );
+          },
+        },
       ]);
       return true;
     };
@@ -285,8 +312,6 @@ const BuilderBillingCreateForm = () => {
       "hardwareBackPress",
       backAction
     );
-
-    return () => backHandler.remove();
   }, []);
 
   const loadUserData = async () => {
@@ -443,9 +468,15 @@ const BuilderBillingCreateForm = () => {
     if (selectedSubProject) {
       fetchProjectDetails();
       fetchSubProjectVendors();
-      fetchScopeItems();
+      setSelectedVendor(null);
     }
   }, [selectedSubProject]);
+
+  useEffect(() => {
+    if (selectedVendor) {
+      fetchScopeItems();
+    }
+  }, [selectedVendor]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -591,8 +622,8 @@ const BuilderBillingCreateForm = () => {
         {/* Scope Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>SCOPE</Text>
-          {scopeItems.map((item) => (
-            <View key={item.id} style={styles.scopeItemContainer}>
+          {scopeItems.map((item, index) => (
+            <View key={`${item.id}-${index}`} style={styles.scopeItemContainer}>
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Scope Item</Text>
                 <TextInput

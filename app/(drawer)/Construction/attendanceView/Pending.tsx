@@ -89,6 +89,9 @@ const Pending = () => {
           meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
             "base64"
           ),
+          AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+            "base64"
+          ),
         }
       );
 

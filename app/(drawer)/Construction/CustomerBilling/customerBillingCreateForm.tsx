@@ -40,7 +40,7 @@ interface ScopeItem {
   scopeQuantity: number;
   scopeCumQuantity: number;
   certifiedQty?: number;
-  balanceQty?: number;
+  balanceQty?: number | null;
   selectedVendor?: number | null;
 }
 
@@ -175,13 +175,27 @@ const CustomerBillingCreateForm = () => {
         `${API_ENDPOINTS.CUSTOMER_BILLING_SCOPE.LIST}?id=${selectedSubProject}`
       );
       if (response.data.success) {
-        const items = response.data.data.map((item: any) => ({
-          ...item,
-          certifiedQty: 0,
-          balanceQty: item.scopeQuantity,
-          selectedVendor: null,
-        }));
-        setScopeItems(items);
+        if (!response.data.data) {
+          setAlert({
+            visible: true,
+            message: response.data.message || "Failed to submit form",
+            type: "error",
+          });
+        } else {
+          const items = response.data.data.map((item: any) => ({
+            ...item,
+            certifiedQty: 0,
+            balanceQty: null,
+            selectedVendor: null,
+          }));
+          setScopeItems(items);
+        }
+      } else {
+        setAlert({
+          visible: true,
+          message: response.data.message || "Failed to submit form",
+          type: "error",
+        });
       }
     } catch (error) {
       console.error("Error fetching scope items:", error);
@@ -348,7 +362,15 @@ const CustomerBillingCreateForm = () => {
           onPress: () => null,
           style: "cancel",
         },
-        { text: "YES", onPress: () => router.back() },
+        {
+          text: "YES",
+          onPress: () => {
+            backHandler.remove();
+            router.replace(
+              "/(drawer)/Construction/CustomerBilling/CustomerBillingIndex"
+            );
+          },
+        },
       ]);
       return true;
     };
@@ -357,8 +379,6 @@ const CustomerBillingCreateForm = () => {
       "hardwareBackPress",
       backAction
     );
-
-    return () => backHandler.remove();
   }, []);
 
   return (
@@ -500,7 +520,7 @@ const CustomerBillingCreateForm = () => {
                 <Text style={styles.label}>Balance Qty</Text>
                 <TextInput
                   style={[styles.input, styles.disabledInput]}
-                  value={item.balanceQty?.toString() || "0"}
+                  value={item.balanceQty?.toString() || ""}
                   editable={false}
                 />
               </View>

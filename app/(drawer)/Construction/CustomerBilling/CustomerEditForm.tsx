@@ -241,7 +241,15 @@ const CustomerEditForm = ({
           onPress: () => null,
           style: "cancel",
         },
-        { text: "YES", onPress: () => router.back() },
+        {
+          text: "YES",
+          onPress: () => {
+            backHandler.remove();
+            router.replace(
+              "/(drawer)/Construction/CustomerBilling/CustomerBillingIndex"
+            );
+          },
+        },
       ]);
       return true;
     };
@@ -250,8 +258,6 @@ const CustomerEditForm = ({
       "hardwareBackPress",
       backAction
     );
-
-    return () => backHandler.remove();
   }, []);
 
   return (

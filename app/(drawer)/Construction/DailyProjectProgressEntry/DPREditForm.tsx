@@ -230,6 +230,7 @@ const DPREditForm = ({
     [key: number]: { vendor: Picker<string>; certifiedQty: TextInput | null };
   }>({});
   const equipmentRefs = useRef<{ [key: number]: TextInput | null }>({});
+  const flowRemarksRef = useRef<TextInput>(null);
 
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
@@ -280,7 +281,15 @@ const DPREditForm = ({
           onPress: () => null,
           style: "cancel",
         },
-        { text: "YES", onPress: () => router.back() },
+        {
+          text: "YES",
+          onPress: () => {
+            backHandler.remove();
+            router.replace(
+              "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex"
+            );
+          },
+        },
       ]);
       return true;
     };
@@ -289,8 +298,6 @@ const DPREditForm = ({
       "hardwareBackPress",
       backAction
     );
-
-    return () => backHandler.remove();
   }, []);
 
   const validateForm = () => {
@@ -382,6 +389,12 @@ const DPREditForm = ({
         equipmentRefs.current[equipment.id]?.focus();
         return false;
       }
+    }
+
+    if (!flowRemarks.trim()) {
+      Alert.alert("Validation Error", "Please enter remarks.");
+      flowRemarksRef.current?.focus();
+      return false;
     }
 
     return true;
@@ -729,7 +742,7 @@ const DPREditForm = ({
                 ref={manpowerRefs[key]}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
-                placeholder="0"
+                placeholder=""
                 value={manpower[key]}
                 onChangeText={(newValue) =>
                   setManpower((prev) => ({ ...prev, [key]: newValue }))
@@ -759,7 +772,7 @@ const DPREditForm = ({
                 }}
                 style={styles.tableCellInput}
                 keyboardType="numeric"
-                placeholder="0"
+                placeholder=""
                 value={equipment.count?.toString()}
                 onChangeText={(value) =>
                   handleEquipmentCountChange(equipment.id, value)
@@ -780,6 +793,7 @@ const DPREditForm = ({
             placeholder="Enter Remarks"
             multiline
             numberOfLines={3}
+            ref={flowRemarksRef}
             value={flowRemarks}
             onChangeText={(text) => setFlowRemarks(text)}
           />

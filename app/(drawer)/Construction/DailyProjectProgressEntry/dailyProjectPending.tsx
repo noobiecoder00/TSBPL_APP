@@ -38,12 +38,7 @@ interface DPRItem {
 interface DPRListResponse {
   success: boolean;
   message: string;
-  data?: {
-    draw: number;
-    recordsTotal: number;
-    recordsFiltered: number;
-    data: DPRItem[];
-  };
+  data?: any;
 }
 
 interface UserData {
@@ -111,6 +106,9 @@ const dailyProjectPending = () => {
           meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
             "base64"
           ),
+          AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+            "base64"
+          ),
         }
       );
 
@@ -133,7 +131,7 @@ const dailyProjectPending = () => {
     }, [])
   );
 
-  const renderItem = ({ item }: { item: DPRItem }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       onPress={() => {
         router.replace(
@@ -197,7 +195,11 @@ const dailyProjectPending = () => {
         keyExtractor={(_, index) => index.toString()}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
-        onEndReached={fetchData}
+        onEndReached={() => {
+          if (hasMore && !isLoading) {
+            fetchData();
+          }
+        }}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           isLoading ? <ActivityIndicator size="small" color="#000" /> : null

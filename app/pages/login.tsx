@@ -6,9 +6,12 @@ import httpClient from "@/utils/httpClient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
+  BackHandler,
   Image,
+  Modal,
   StyleSheet,
   Text,
   TextInput,
@@ -51,7 +54,7 @@ interface ForgotPasswordResponse {
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("Asdfghjkl@123");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState("User");
   const [open, setOpen] = useState(false);
@@ -74,6 +77,7 @@ export default function LoginScreen() {
     message: "",
     type: "info",
   });
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string; loginType?: string } =
@@ -113,6 +117,7 @@ export default function LoginScreen() {
               Password: password,
             };
 
+      console.log(endpoint, payload);
       const response = await httpClient.post<
         LoginResponse | VendorLoginResponse
       >(endpoint, payload, { timeout: 60000 });
@@ -173,12 +178,16 @@ export default function LoginScreen() {
     }
   };
 
-  const handleForgotPassword = async () => {
+  const handleForgotPasswordClick = () => {
     if (!email) {
       setErrors({ email: "Pno is required" });
       return;
     }
+    setShowForgotPasswordModal(true);
+  };
 
+  const handleForgotPassword = async () => {
+    setShowForgotPasswordModal(false);
     setLoading(true);
     try {
       const endpoint =
@@ -218,6 +227,27 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert("Hold on!", "Are you sure you want to exit?", [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel",
+        },
+        { text: "YES", onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -284,11 +314,42 @@ export default function LoginScreen() {
           <CustomButton
             title="Forgot Password"
             variant="secondary"
-            onPress={handleForgotPassword}
+            onPress={handleForgotPasswordClick}
             loading={loading}
           />
         </View>
       </View>
+
+      <Modal
+        visible={showForgotPasswordModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowForgotPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Forgot Password</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to reset your password?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowForgotPasswordModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleForgotPassword}
+              >
+                <Text style={styles.confirmButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <CustomAlert
         visible={alert.visible}
         message={alert.message}
@@ -377,5 +438,66 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 24,
+    width: "80%",
+    maxWidth: 400,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: COLORS.lightGray,
+  },
+  confirmButton: {
+    backgroundColor: COLORS.primary,
+  },
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  confirmButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "500",
   },
 });

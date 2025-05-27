@@ -78,6 +78,7 @@ interface AttendanceActionProps {
   isSee: boolean;
   parentId: number | null;
   onStatusChange: (success: boolean, message: string) => void;
+  level: number | null;
 }
 
 // Add new component for attendance action
@@ -86,6 +87,7 @@ const AttendanceAction: React.FC<AttendanceActionProps> = ({
   isSee,
   parentId,
   onStatusChange,
+  level,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isApproved, setIsApproved] = useState(item.isChecked === 1);
@@ -163,25 +165,42 @@ const AttendanceAction: React.FC<AttendanceActionProps> = ({
   };
 
   if (isSee) {
-    return (
-      <View style={styles.actionContainer}>
-        <View style={styles.toggleContainer}>
-          <Text style={[styles.toggleLabel, { color: COLORS.error }]}>
-            Reject
-          </Text>
-          <Switch
-            value={isApproved}
-            onValueChange={handleToggle}
-            disabled={isLoading}
-            color={COLORS.success}
-            style={styles.toggleSwitch}
-          />
-          <Text style={[styles.toggleLabel, { color: COLORS.success }]}>
-            Approve
-          </Text>
+    if (level === 1) {
+      return (
+        <View style={styles.actionContainer}>
+          <View style={styles.toggleContainer}>
+            <Text style={[styles.toggleLabel, { color: COLORS.error }]}>
+              Reject
+            </Text>
+            <Switch
+              value={isApproved}
+              onValueChange={handleToggle}
+              disabled={isLoading}
+              color={COLORS.success}
+              style={styles.toggleSwitch}
+            />
+            <Text style={[styles.toggleLabel, { color: COLORS.success }]}>
+              Approve
+            </Text>
+          </View>
         </View>
-      </View>
-    );
+      );
+    } else {
+      return (
+        <View style={styles.actionContainer}>
+          <View
+            style={[
+              styles.statusBox,
+              { backgroundColor: getStatusColor(item.isChecked) },
+            ]}
+          >
+            <Text style={styles.statusBoxText}>
+              {getStatusText(item.isChecked)}
+            </Text>
+          </View>
+        </View>
+      );
+    }
   }
 
   return (
@@ -664,6 +683,7 @@ const AttendanceDetails = () => {
                     item={item}
                     isSee={isSee}
                     parentId={cwParentId}
+                    level={level}
                     onStatusChange={(success, message) => {
                       setAlert({
                         visible: true,
@@ -1092,6 +1112,18 @@ const styles = StyleSheet.create({
   },
   toggleSwitch: {
     marginHorizontal: 8,
+  },
+  statusBox: {
+    padding: 8,
+    borderRadius: 4,
+    minWidth: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statusBoxText: {
+    color: COLORS.white,
+    fontWeight: "500",
+    fontSize: SIZES.medium,
   },
 });
 

@@ -705,22 +705,26 @@ const CustomerBillingDetails = () => {
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Uploaded Document</Text>
-                  {flow.document ? (
-                    <FilePreview
-                      file={{
-                        uri: `${baseURL}/uploads/Customer_FlowActionfiles/${flow.document}`,
-                        name: flow.document,
-                        type: "application/pdf",
-                      }}
-                    />
-                  ) : (
-                    <Text style={styles.noDocumentsText}>
-                      No Documents Uploaded
-                    </Text>
-                  )}
-                </View>
+                {flow.level !== 0 && (
+                  <>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Uploaded Document</Text>
+                      {flow.document ? (
+                        <FilePreview
+                          file={{
+                            uri: `${baseURL}/uploads/Customer_FlowActionfiles/${flow.document}`,
+                            name: flow.document,
+                            type: "application/pdf",
+                          }}
+                        />
+                      ) : (
+                        <Text style={styles.noDocumentsText}>
+                          No Documents Uploaded
+                        </Text>
+                      )}
+                    </View>
+                  </>
+                )}
               </View>
             ))}
           </>

@@ -677,7 +677,19 @@ const CustomerBillingDetails = () => {
           <>
             {builderMasterFlow.map((flow: any, index: number) => (
               <View key={flow.id} style={{ padding: 10 }}>
-                <TouchableOpacity style={styles.pendingHeader}>
+                <TouchableOpacity
+                  style={
+                    flow.status_to === "approve"
+                      ? styles.successHeader
+                      : flow.status_to === "reject"
+                      ? styles.errorHeader
+                      : flow.status_to === "return"
+                      ? styles.infoHeader
+                      : flow.status_to === "reevaluate"
+                      ? styles.warningHeader
+                      : styles.pendingHeader
+                  }
+                >
                   <Text style={styles.pendingText}>
                     {flow.userMaster.name} ({flow.roleMaster.roleName}) Remarks
                   </Text>
@@ -694,7 +706,7 @@ const CustomerBillingDetails = () => {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Action Taken</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, styles.disabledInput]}
                         value={
                           flow.status_to === "approve"
                             ? "Approved"
@@ -713,7 +725,11 @@ const CustomerBillingDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Remarks</Text>
                   <TextInput
-                    style={[styles.input, styles.multilineInput]}
+                    style={[
+                      styles.input,
+                      styles.multilineInput,
+                      styles.disabledInput,
+                    ]}
                     value={flow.actionTaken}
                     editable={false}
                     multiline
@@ -724,28 +740,32 @@ const CustomerBillingDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Action Taken Date Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.disabledInput]}
                     value={formatDateTime(flow.actionTakenDatetime)}
                     editable={false}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Uploaded Document</Text>
-                  {flow.document ? (
-                    <FilePreview
-                      file={{
-                        uri: `${baseURL}/uploads/Builder_FlowActionfiles/${flow.document}`,
-                        name: flow.document,
-                        type: "application/pdf",
-                      }}
-                    />
-                  ) : (
-                    <Text style={styles.noDocumentsText}>
-                      No Documents Uploaded
-                    </Text>
-                  )}
-                </View>
+                {flow.level !== 0 && (
+                  <>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Uploaded Document</Text>
+                      {flow.document ? (
+                        <FilePreview
+                          file={{
+                            uri: `${baseURL}/uploads/Builder_FlowActionfiles/${flow.document}`,
+                            name: flow.document,
+                            type: "application/pdf",
+                          }}
+                        />
+                      ) : (
+                        <Text style={styles.noDocumentsText}>
+                          No Documents Uploaded
+                        </Text>
+                      )}
+                    </View>
+                  </>
+                )}
               </View>
             ))}
           </>
@@ -1160,6 +1180,31 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     marginVertical: 10,
+  },
+
+  successHeader: {
+    backgroundColor: COLORS.success,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  infoHeader: {
+    backgroundColor: COLORS.info,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  errorHeader: {
+    backgroundColor: COLORS.error,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningHeader: {
+    backgroundColor: COLORS.warning,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
 });
 

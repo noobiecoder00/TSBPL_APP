@@ -337,7 +337,7 @@ const BuilderEditForm = ({
           <RequiredLabel label="SO Number" />
           <TextInput
             style={styles.input}
-            value={initialData?.soNumber}
+            value={soNumber}
             onChangeText={(value) => setSoNumber(value)}
           />
         </View>

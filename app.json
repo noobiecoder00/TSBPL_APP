@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "permissions": ["CAMERA", "LOCATION"],
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/tsbpl_app_icon.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -17,13 +17,15 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to mark attendance."
-      }
+      },
+      "icon": "./assets/images/tsbpl_app_icon.jpg"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/tsbpl_app_icon.jpg",
         "backgroundColor": "#FFFFFF"
       },
+      "icon": "./assets/images/tsbpl_app_icon.jpg",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.CAMERA",

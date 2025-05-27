@@ -3,6 +3,8 @@ import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -23,6 +25,10 @@ interface ChecklistResponse {
   equipmentCategoryChecklists?: any[];
 }
 
+interface UserData {
+  id: string;
+}
+
 const checklist = () => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -30,6 +36,7 @@ const checklist = () => {
   const [start, setStart] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
   const PAGE_SIZE = 10;
 
@@ -38,6 +45,21 @@ const checklist = () => {
     setStart(0);
     setHasMore(true);
     setIsLoading(false);
+  };
+
+  const loadUserData = async () => {
+    try {
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        const parsedData = JSON.parse(userDataString);
+        setUserData(parsedData);
+        return parsedData;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      return null;
+    }
   };
 
   const fetchData = async () => {
@@ -58,11 +80,30 @@ const checklist = () => {
     console.log("Loading started");
 
     try {
-      const response = await httpClient.get<ChecklistResponse>(
-        API_ENDPOINTS.SAFETY.CHECKLIST
+      // Ensure we have user data
+      let currentUserData = userData;
+      if (!currentUserData?.id) {
+        currentUserData = await loadUserData();
+        if (!currentUserData?.id) {
+          console.log("User data not available");
+          return;
+        }
+      }
+      console.log("payload : ", {
+        AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+          "base64"
+        ),
+      });
+      const response = await httpClient.post<ChecklistResponse>(
+        API_ENDPOINTS.SAFETY.CHECKLIST,
+        {
+          AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+            "base64"
+          ),
+        }
       );
 
-      const items = response.data?.equipmentCategoryChecklists ?? [];
+      const items = response.data?.data ?? [];
       console.log("Items received:", items.length);
       console.table(items);
 
