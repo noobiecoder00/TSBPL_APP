@@ -102,6 +102,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+         release {
+        if (project.hasProperty('TSBPL_STORE_PASSWORD')) {
+            storeFile file(TSBPL_KEYSTORE)
+            storePassword TSBPL_STORE_PASSWORD
+            keyAlias TSBPL_KEY_ALIAS
+            keyPassword TSBPL_KEY_PASSWORD
+        }
+    }
     }
     buildTypes {
         debug {
@@ -110,10 +118,10 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            signingConfig signingConfigs.release
+            shrinkResources true
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
         }
     }
@@ -169,9 +177,13 @@ dependencies {
         }
     }
 
-    if (hermesEnabled.toBoolean()) {
-        implementation("com.facebook.react:hermes-android")
-    } else {
-        implementation jscFlavor
-    }
+   def hermesEnabled = (findProperty('hermesEnabled') ?: false).toBoolean()
+
+if (hermesEnabled) {
+    implementation("com.facebook.react:hermes-android")
+} else {
+    implementation jscFlavor
+}
+
+
 }
