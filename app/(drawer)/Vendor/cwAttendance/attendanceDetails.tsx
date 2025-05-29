@@ -635,7 +635,6 @@ const AttendanceDetails = () => {
 
         {/* Attendance Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Attendance Sheet</Text>
           {attendanceItems.map((item) => (
             <View key={item.id} style={styles.attendanceCard}>
               <View style={styles.cardRow}>
@@ -907,6 +906,11 @@ const styles = StyleSheet.create({
   errorInput: {
     borderColor: "red",
     color: "red",
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
   },
   pendingHeader: {
     backgroundColor: COLORS.primary,

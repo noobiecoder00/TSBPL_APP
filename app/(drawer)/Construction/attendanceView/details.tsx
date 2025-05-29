@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Switch } from "react-native-paper";
+import { Checkbox, Switch } from "react-native-paper";
 import { useDispatch } from "react-redux";
 
 interface ProjectNo {
@@ -654,6 +654,10 @@ const AttendanceDetails = () => {
         {/* Attendance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Attendance Sheet</Text>
+          <Text style={styles.sectionTitle}>Attendance Sheet</Text>
+          <View style={styles.checkboxContainer}>
+            <Checkbox.Item label="Select All" status="checked" />
+          </View>
           {attendanceItems.map((item) => (
             <View key={item.id} style={styles.attendanceCard}>
               <View style={styles.cardRow}>
@@ -1003,6 +1007,11 @@ const styles = StyleSheet.create({
   errorInput: {
     borderColor: "red",
     color: "red",
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
   },
   pendingHeader: {
     backgroundColor: COLORS.primary,

@@ -80,7 +80,15 @@ const All = () => {
           return;
         }
       }
-      console.log("currentUserData", currentUserData);
+      console.log("payload", {
+        start,
+        length: PAGE_SIZE,
+        search: "",
+        meId: "0",
+        AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+          "base64"
+        ),
+      });
       const response = await httpClient.post<ListResponse>(
         API_ENDPOINTS.ATTENDANCE.LIST,
         {

@@ -54,7 +54,7 @@ interface ForgotPasswordResponse {
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("Asdfghjkl@123");
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState("User");
   const [open, setOpen] = useState(false);
@@ -158,6 +158,7 @@ export default function LoginScreen() {
         router.replace("/(drawer)/home");
         //console.log("Navigated to /home");
       } else {
+        console.log("Login failed:", response.data);
         setAlert({
           visible: true,
           message: response.data.message || "Login failed. Please try again.",
@@ -252,7 +253,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../../assets/images/logo.png")}
+        source={require("../../assets/images/tsbpl_app_icon.png")}
         style={styles.logo}
       />
       <View style={styles.formContainer}>

@@ -44,7 +44,7 @@ export default function Home() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Image
-          source={require("@/assets/images/logo.png")}
+          source={require("@/assets/images/tsbpl_app_icon.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 200,
+    height: 200,
     marginBottom: SIZES.medium,
   },
   welcomeText: {

@@ -473,7 +473,7 @@ const DailyProjectCreateForm = () => {
 
     // Validate equipment quantities
     for (const equipment of equipments) {
-      if (!equipment.count || equipment.count <= 0) {
+      if (!equipment.count || equipment.count < 0) {
         Alert.alert(
           "Validation Error",
           `Please enter count for equipment: ${equipment.equipmentName}`
