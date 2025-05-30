@@ -2,7 +2,7 @@
   "expo": {
     "name": "Construction App",
     "slug": "tsbplapp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/tsbpl_app_icon.png",
     "userInterfaceStyle": "light",
@@ -27,6 +27,7 @@
       },
       "icon": "./assets/images/tsbpl_app_icon.png",
       "edgeToEdgeEnabled": true,
+      "versionCode": 2,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.CAMERA",

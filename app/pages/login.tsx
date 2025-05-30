@@ -54,7 +54,7 @@ interface ForgotPasswordResponse {
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("Asdfghjkl@123");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loginType, setLoginType] = useState("User");
   const [open, setOpen] = useState(false);
