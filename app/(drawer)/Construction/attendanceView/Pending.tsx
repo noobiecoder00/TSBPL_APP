@@ -79,7 +79,17 @@ const Pending = () => {
           return;
         }
       }
-      console.log("currentUserData", currentUserData);
+      console.log("payload", {
+        start,
+        length: PAGE_SIZE,
+        search: "",
+        meId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+          "base64"
+        ),
+        AllId: Buffer.from(currentUserData.id.toString(), "utf-8").toString(
+          "base64"
+        ),
+      });
       const response = await httpClient.post<ListResponse>(
         API_ENDPOINTS.ATTENDANCE.LIST,
         {
@@ -102,6 +112,7 @@ const Pending = () => {
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching CW data:", error);
+      return;
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());

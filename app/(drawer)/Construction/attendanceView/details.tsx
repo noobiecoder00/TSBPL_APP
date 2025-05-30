@@ -6,6 +6,7 @@ import Loader from "@/components/Loader";
 import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, FONTS, SIZES } from "@/constants/theme";
 import httpClient, { baseURL } from "@/utils/httpClient";
+import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 import * as DocumentPicker from "expo-document-picker";
@@ -21,7 +22,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Checkbox, Switch } from "react-native-paper";
 import { useDispatch } from "react-redux";
 
 interface ProjectNo {
@@ -72,148 +72,12 @@ interface UserData {
   id: string;
 }
 
-// Add new interface for attendance action
-interface AttendanceActionProps {
-  item: AttendanceItem;
-  isSee: boolean;
-  parentId: number | null;
-  onStatusChange: (success: boolean, message: string) => void;
-  level: number | null;
+interface AttendanceUpdate {
+  parentId: number;
+  childId: number;
+  cwId: number;
+  isApproved: boolean;
 }
-
-// Add new component for attendance action
-const AttendanceAction: React.FC<AttendanceActionProps> = ({
-  item,
-  isSee,
-  parentId,
-  onStatusChange,
-  level,
-}) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isApproved, setIsApproved] = useState(item.isChecked === 1);
-  const dispatch = useDispatch();
-
-  // Update local state when item changes
-  useEffect(() => {
-    setIsApproved(item.isChecked === 1);
-  }, [item.isChecked]);
-
-  const handleToggle = async (value: boolean) => {
-    if (!parentId) return;
-    console.log({
-      parentId: parentId.toString(),
-      childId: item.id.toString(),
-      cwId: item.cwId.toString(),
-      isApproved: value,
-    });
-    setIsLoading(true);
-    try {
-      const response = await httpClient.post(
-        API_ENDPOINTS.ATTENDANCE.UPDATE_ATTENDANCE,
-        {
-          parentId: parentId.toString(),
-          childId: item.id.toString(),
-          cwId: item.cwId.toString(),
-          isApproved: value,
-        }
-      );
-
-      if (response.data.success) {
-        setIsApproved(value); // Update local state on success
-        onStatusChange(
-          true,
-          response.data.message || "Attendance status updated successfully"
-        );
-      } else {
-        setIsApproved(!value); // Revert local state on failure
-        onStatusChange(
-          false,
-          response.data.message || "Failed to update attendance status"
-        );
-      }
-    } catch (error: any) {
-      setIsApproved(!value); // Revert local state on error
-      onStatusChange(
-        false,
-        error.response?.data?.message || "Failed to update attendance status"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: number) => {
-    switch (status) {
-      case 0:
-        return COLORS.error;
-      case 1:
-        return COLORS.success;
-      default:
-        return COLORS.warning;
-    }
-  };
-
-  const getStatusText = (status: number) => {
-    switch (status) {
-      case 0:
-        return "Rejected";
-      case 1:
-        return "Approved";
-      default:
-        return "Pending";
-    }
-  };
-
-  if (isSee) {
-    if (level === 1) {
-      return (
-        <View style={styles.actionContainer}>
-          <View style={styles.toggleContainer}>
-            <Text style={[styles.toggleLabel, { color: COLORS.error }]}>
-              Reject
-            </Text>
-            <Switch
-              value={isApproved}
-              onValueChange={handleToggle}
-              disabled={isLoading}
-              color={COLORS.success}
-              style={styles.toggleSwitch}
-            />
-            <Text style={[styles.toggleLabel, { color: COLORS.success }]}>
-              Approve
-            </Text>
-          </View>
-        </View>
-      );
-    } else {
-      return (
-        <View style={styles.actionContainer}>
-          <View
-            style={[
-              styles.statusBox,
-              { backgroundColor: getStatusColor(item.isChecked) },
-            ]}
-          >
-            <Text style={styles.statusBoxText}>
-              {getStatusText(item.isChecked)}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-  }
-
-  return (
-    <View
-      style={[
-        styles.statusContainer,
-        { backgroundColor: getStatusColor(item.isChecked) },
-      ]}
-    >
-      <Text style={styles.statusText}>{getStatusText(item.isChecked)}</Text>
-    </View>
-  );
-};
 
 const AttendanceDetails = () => {
   const dispatch = useDispatch();
@@ -236,6 +100,12 @@ const AttendanceDetails = () => {
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [attendanceItems, setAttendanceItems] = useState<AttendanceItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [attendanceUpdate, setAttendanceUpdate] = useState<AttendanceUpdate[]>(
+    []
+  );
+  const [selectAll, setSelectAll] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -496,6 +366,36 @@ const AttendanceDetails = () => {
       dispatch(showLoading());
       setError(null);
 
+      // First handle attendance update if there are items to update
+      if (attendanceUpdate.length > 0) {
+        try {
+          const attendanceResponse = await httpClient.post(
+            API_ENDPOINTS.ATTENDANCE.UPDATE_ATTENDANCE,
+            {
+              AttendanceList: attendanceUpdate.map((item) => ({
+                parentId: item.parentId.toString(),
+                childId: item.childId.toString(),
+                cwId: item.cwId.toString(),
+                isApproved: item.isApproved,
+              })),
+            }
+          );
+
+          if (!attendanceResponse.data.success) {
+            throw new Error(
+              attendanceResponse.data.message ||
+                "Failed to update attendance status"
+            );
+          }
+        } catch (error: any) {
+          throw new Error(
+            error.response?.data?.message ||
+              "Failed to update attendance status"
+          );
+        }
+      }
+
+      // Then proceed with the form submission
       const formDataToSend = new FormData();
 
       // Add required fields
@@ -520,8 +420,6 @@ const AttendanceDetails = () => {
         ).toString("base64");
         formDataToSend.append("UpdatedBy", encodedUserId);
       }
-
-      console.log("formDataToSend", formDataToSend);
 
       const response = await httpClient.post<DprSubmitResponse>(
         API_ENDPOINTS.ATTENDANCE.FLOW_ACTION,
@@ -571,10 +469,103 @@ const AttendanceDetails = () => {
     }
   };
 
+  // Initialize selected items based on isChecked
+  useEffect(() => {
+    const initialSelectedIds = attendanceItems
+      .filter((item) => item.isChecked === 1)
+      .map((item) => item.id);
+
+    const initialUpdates = attendanceItems.map((item) => ({
+      parentId: cwParentId || 0,
+      childId: item.id,
+      cwId: item.cwId,
+      isApproved: item.isChecked === 1,
+    }));
+
+    setSelectedIds(initialSelectedIds);
+    setAttendanceUpdate(initialUpdates);
+    setSelectAll(initialSelectedIds.length === attendanceItems.length);
+  }, [attendanceItems, cwParentId]);
+
+  const handleSelectAll = () => {
+    if (!selectAll) {
+      // Select all items
+      const allUpdates = attendanceItems.map((item) => ({
+        parentId: cwParentId || 0,
+        childId: item.id,
+        cwId: item.cwId,
+        isApproved: true,
+      }));
+      setAttendanceUpdate(allUpdates);
+      setSelectedIds(attendanceItems.map((item) => item.id));
+    } else {
+      // Deselect all items
+      const allUpdates = attendanceItems.map((item) => ({
+        parentId: cwParentId || 0,
+        childId: item.id,
+        cwId: item.cwId,
+        isApproved: false,
+      }));
+      setAttendanceUpdate(allUpdates);
+      setSelectedIds([]);
+    }
+    setSelectAll(!selectAll);
+  };
+
+  const handleItemSelect = (item: AttendanceItem) => {
+    const isSelected = selectedIds.includes(item.id);
+    let newSelectedIds: number[];
+    let newAttendanceUpdate: AttendanceUpdate[];
+
+    if (isSelected) {
+      // Remove item from selection
+      newSelectedIds = selectedIds.filter((id) => id !== item.id);
+      newAttendanceUpdate = attendanceUpdate.map((update) =>
+        update.childId === item.id ? { ...update, isApproved: false } : update
+      );
+    } else {
+      // Add item to selection
+      newSelectedIds = [...selectedIds, item.id];
+      newAttendanceUpdate = attendanceUpdate.map((update) =>
+        update.childId === item.id ? { ...update, isApproved: true } : update
+      );
+    }
+
+    setSelectedIds(newSelectedIds);
+    setAttendanceUpdate(newAttendanceUpdate);
+    setSelectAll(newSelectedIds.length === attendanceItems.length);
+  };
+
+  const getStatusColor = (status: number) => {
+    switch (status) {
+      case 0:
+        return COLORS.error;
+      case 1:
+        return COLORS.success;
+      default:
+        return COLORS.warning;
+    }
+  };
+
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return "Rejected";
+      case 1:
+        return "Approved";
+      default:
+        return "Pending";
+    }
+  };
+
   return (
     <View style={styles.mainContainer}>
       <Loader />
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        nestedScrollEnabled={true}
+        scrollEnabled={true}
+      >
         {/* Attendance Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Attendance Details</Text>
@@ -654,55 +645,139 @@ const AttendanceDetails = () => {
         {/* Attendance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Attendance Sheet</Text>
-          <Text style={styles.sectionTitle}>Attendance Sheet</Text>
-          <View style={styles.checkboxContainer}>
-            <Checkbox.Item label="Select All" status="checked" />
+          <View
+            style={[
+              styles.checkboxContainer,
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 10,
+                marginRight: 15,
+              },
+            ]}
+          >
+            {isSee && level === 1 && (
+              <>
+                <Text style={[styles.checkboxLabel, { marginRight: 10 }]}>
+                  Select All
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.customCheckbox,
+                    selectAll && styles.checkedCheckbox,
+                  ]}
+                  onPress={handleSelectAll}
+                >
+                  {selectAll && (
+                    <MaterialIcons name="check" size={18} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-          {attendanceItems.map((item) => (
-            <View key={item.id} style={styles.attendanceCard}>
-              <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>CW Name:</Text>
-                <Text style={styles.cardValue}>{item.cwName}</Text>
-              </View>
 
-              <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>In Time:</Text>
-                <Text style={styles.cardValue}>{item.inTime}</Text>
-              </View>
+          <View
+            style={[
+              styles.attendanceScrollContainer,
+              {
+                height:
+                  attendanceItems.length <= 3
+                    ? styles.attendanceCard.height * attendanceItems.length + 50
+                    : 550,
+              },
+            ]}
+          >
+            <ScrollView
+              style={styles.attendanceScrollView}
+              showsVerticalScrollIndicator={attendanceItems.length > 3}
+              contentContainerStyle={styles.attendanceScrollContent}
+              nestedScrollEnabled={true}
+              scrollEnabled={attendanceItems.length > 3}
+            >
+              {attendanceItems.map((item) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.attendanceCard,
+                    {
+                      height: level !== 1 ? 200 : 150,
+                    },
+                  ]}
+                >
+                  {isSee && level === 1 && (
+                    <View style={styles.checkboxContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.customCheckbox,
+                          selectedIds.includes(item.id) &&
+                            styles.checkedCheckbox,
+                          !isSee && styles.disabledCheckbox,
+                        ]}
+                        onPress={() => isSee && handleItemSelect(item)}
+                        disabled={!isSee}
+                      >
+                        {selectedIds.includes(item.id) && (
+                          <MaterialIcons name="check" size={18} color="#fff" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>CW Name:</Text>
+                    <Text style={styles.cardValue}>{item.cwName}</Text>
+                  </View>
 
-              <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>Out Time:</Text>
-                <Text style={styles.cardValue}>{item.outTime}</Text>
-              </View>
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>In Time:</Text>
+                    <Text style={styles.cardValue}>{item.inTime}</Text>
+                  </View>
 
-              <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>Working Hours:</Text>
-                <Text style={styles.cardValue}>{item.workingHours}</Text>
-              </View>
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>Out Time:</Text>
+                    <Text style={styles.cardValue}>{item.outTime}</Text>
+                  </View>
 
-              <View style={styles.cardRow}>
-                <Text style={styles.cardLabel}>Action:</Text>
-                <View style={styles.actionContainer}>
-                  <AttendanceAction
-                    item={item}
-                    isSee={isSee}
-                    parentId={cwParentId}
-                    level={level}
-                    onStatusChange={(success, message) => {
-                      setAlert({
-                        visible: true,
-                        message: message,
-                        type: success ? "success" : "error",
-                        onClose: () => {
-                          setAlert((prev) => ({ ...prev, visible: false }));
-                        },
-                      });
-                    }}
-                  />
+                  <View style={styles.cardRow}>
+                    <Text style={styles.cardLabel}>Working Hours:</Text>
+                    <Text style={styles.cardValue}>{item.workingHours}</Text>
+                  </View>
+                  {level !== 1 && (
+                    <View style={styles.cardRow}>
+                      <Text style={styles.cardLabel}>Action:</Text>
+                      <View style={styles.actionContainer}>
+                        <View
+                          style={[
+                            styles.statusBox,
+                            { backgroundColor: getStatusColor(item.isChecked) },
+                          ]}
+                        >
+                          <Text style={styles.statusBoxText}>
+                            {getStatusText(item.isChecked)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
-              </View>
+              ))}
+            </ScrollView>
+          </View>
+
+          {isSee && level === 1 && (
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginBottom: 10,
+                paddingHorizontal: 15,
+              }}
+            >
+              <Text style={[styles.checkboxLabel]}>
+                Selected: {selectedIds.length} of {attendanceItems.length}
+              </Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Action Taken Remarks Section */}
@@ -719,7 +794,11 @@ const AttendanceDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Remarks</Text>
                   <TextInput
-                    style={[styles.input, styles.multilineInput]}
+                    style={[
+                      styles.input,
+                      styles.multilineInput,
+                      styles.disabledInput,
+                    ]}
                     value={flow.actionTaken}
                     editable={false}
                     multiline
@@ -730,7 +809,7 @@ const AttendanceDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Action Taken Date Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.disabledInput]}
                     value={formatDateTime(flow.actionTakenDatetime)}
                     editable={false}
                   />
@@ -797,7 +876,7 @@ const AttendanceDetails = () => {
               <TextInput
                 value={tabUserName || ""}
                 editable={false}
-                style={styles.input}
+                style={[styles.input, styles.disabledInput]}
               />
             </View>
 
@@ -807,7 +886,7 @@ const AttendanceDetails = () => {
               <TextInput
                 value={autoSlgTargetDate || ""}
                 editable={false}
-                style={styles.input}
+                style={[styles.input, styles.disabledInput]}
               />
             </View>
 
@@ -826,7 +905,7 @@ const AttendanceDetails = () => {
               <View style={styles.buttonContainer}>
                 <View style={styles.buttonWrapper}>
                   <CustomButton
-                    title="Submit"
+                    title="Approve & Submit"
                     onPress={() => handleSubmit()}
                     variant="primary"
                     disabled={isSubmitting}
@@ -865,6 +944,30 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     backgroundColor: COLORS.background,
+  },
+  checkboxContainer: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+  },
+  checkedCheckbox: {
+    backgroundColor: COLORS.primary,
+  },
+  checkboxLabel: {
+    marginLeft: 8,
+    fontSize: SIZES.medium,
+    color: COLORS.text,
   },
   dateInput: {
     borderWidth: 1,
@@ -972,8 +1075,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     justifyContent: "center",
-    marginTop: 20,
-    marginBottom: 50,
+    marginVertical: 10,
   },
   datePicker: {
     width: "100%",
@@ -1008,11 +1110,6 @@ const styles = StyleSheet.create({
     borderColor: "red",
     color: "red",
   },
-  checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
   pendingHeader: {
     backgroundColor: COLORS.primary,
     padding: 12,
@@ -1045,7 +1142,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
   },
   actionButtons: {
     flexDirection: "row",
@@ -1089,6 +1185,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     borderWidth: 1,
     borderColor: "#e0e6f0",
+    height: 200,
   },
   cardRow: {
     flexDirection: "row",
@@ -1133,6 +1230,24 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: "500",
     fontSize: SIZES.medium,
+  },
+  attendanceScrollContainer: {
+    marginVertical: 10,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: COLORS.lightGray,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+  },
+  attendanceScrollView: {
+    flex: 1,
+  },
+  attendanceScrollContent: {
+    padding: 10,
+  },
+  disabledCheckbox: {
+    opacity: 0.5,
+    borderColor: COLORS.gray,
   },
 });
 

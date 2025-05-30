@@ -44,7 +44,7 @@ export const API_ENDPOINTS = {
     DETAILS: "/api/CW_Attendance/details",
     APPROVE: "/api/CW_Attendance/approve",
     REJECT: "/api/CW_Attendance/reject",
-    UPDATE_ATTENDANCE: "/api/cwAttendance/UpdateAttendanceApproval",
+    UPDATE_ATTENDANCE: "/api/cwAttendance/UpdateMultipleAttendanceApprovals",
     FLOW_ACTION: "/api/CWAttendanceFlowAction",
   },
 

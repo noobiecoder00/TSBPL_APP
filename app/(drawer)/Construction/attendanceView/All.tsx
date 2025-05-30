@@ -110,6 +110,7 @@ const All = () => {
       setHasMore(items.length === PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching data:", error);
+      return;
     } finally {
       setIsLoading(false);
       dispatch(hideLoading());
