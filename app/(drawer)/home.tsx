@@ -1,8 +1,10 @@
-import { COLORS, FONTS, SIZES } from "@/constants/theme";
+import { COLORS } from "@/constants/theme";
+import { baseURL } from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
+import { WebView } from "react-native-webview";
 
 interface UserData {
   name: string;
@@ -17,7 +19,8 @@ interface UserData {
 export default function Home() {
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
-
+  const dashboardUrl = `${baseURL}/Dashboard/MobileView`;
+  console.log("Loading dashboard URL:", dashboardUrl);
   useEffect(() => {
     const loadUserData = async () => {
       try {
@@ -42,36 +45,14 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={require("@/assets/images/tsbpl_app_icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {userData && (
-          <View style={styles.card}>
-            {userData.type === "User" && (
-              <>
-                <Text style={styles.userText}>👤 Name: {userData.name}</Text>
-                <Text style={styles.userText}>🆔 PNO: {userData.pno}</Text>
-                <Text style={styles.userText}>🎖️ Role: {userData.role}</Text>
-              </>
-            )}
-            {userData.type === "Vendor" && (
-              <>
-                <Text style={styles.userText}>
-                  🏭 Vendor Name: {userData.vendorName}
-                </Text>
-                <Text style={styles.userText}>
-                  🏭 Vendor Code: {userData.vendorCode}
-                </Text>
-                <Text style={styles.userText}>🏭 Role: {userData.type}</Text>
-              </>
-            )}
-          </View>
-        )}
-      </View>
+      <WebView
+        source={{ uri: dashboardUrl }}
+        style={styles.webview}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        scalesPageToFit={true}
+      />
     </View>
   );
 }
@@ -81,45 +62,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    padding: SIZES.large,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
-    alignItems: "center",
-  },
-  logo: {
-    width: 200,
-    height: 200,
-    marginBottom: SIZES.medium,
-  },
-  welcomeText: {
-    ...FONTS.bold,
-    fontSize: SIZES.xlarge,
-    color: COLORS.primary,
-    marginBottom: SIZES.large,
-  },
-  card: {
-    width: "100%",
-    backgroundColor: "#f8f9fa",
-    padding: SIZES.medium,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: SIZES.large,
-  },
-  cardTitle: {
-    ...FONTS.bold,
-    fontSize: SIZES.medium,
-    marginBottom: SIZES.small,
-    color: COLORS.primary,
-  },
-  userText: {
-    ...FONTS.medium,
-    fontSize: SIZES.medium,
-    color: "#333",
-    marginBottom: 4,
+  webview: {
+    flex: 1,
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height,
   },
 });

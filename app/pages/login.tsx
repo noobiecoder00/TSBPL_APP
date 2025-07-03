@@ -117,12 +117,12 @@ export default function LoginScreen() {
               Password: password,
             };
 
-      console.log(endpoint, payload);
+      console.log("payload : ", endpoint, payload);
       const response = await httpClient.post<
         LoginResponse | VendorLoginResponse
       >(endpoint, payload, { timeout: 60000 });
 
-      //console.log("Response received:", response.data);
+      console.log("Response received:", response.data);
 
       if (response.data.success) {
         let userData;

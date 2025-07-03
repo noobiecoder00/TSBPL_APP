@@ -3,5 +3,8 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "workbench.preferredHighContrastLightColorTheme": "Default High Contrast Light",
+  "workbench.preferredLightColorTheme": "JellyFish",
+  "workbench.colorTheme": "Default Dark Modern"
 }

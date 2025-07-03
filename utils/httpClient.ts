@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-export const baseURL = "https://constructionapp.tatabluescopesteel.com";
-// export const baseURL = "http://tbspl.aiplapps.com";
+// export const baseURL = "https://constructionapp.tatabluescopesteel.com";
+export const baseURL = "http://tbspl.aiplapps.com";
 
 // Create axios instance with default config
 const httpClient = axios.create({
