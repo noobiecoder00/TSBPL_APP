@@ -6,7 +6,6 @@ import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import { Buffer } from "buffer";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -21,6 +20,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  AutocompleteDropdown,
+  AutocompleteDropdownContextProvider,
+  IAutocompleteDropdownRef,
+} from "react-native-autocomplete-dropdown";
 import { useDispatch } from "react-redux";
 
 interface ProjectNo {
@@ -50,8 +54,8 @@ interface ScopeItem {
   uom: string;
   scopeQuantity: number;
   scopeCumQuantity: number;
-  certifiedQty?: number;
-  balanceQty?: number;
+  certifiedQty?: number | string;
+  balanceQty?: number | null;
   selectedVendor?: number | null;
 }
 
@@ -120,8 +124,8 @@ interface DPREditFormProps {
       scopeUOMName: string;
       scopeQty: number;
       scopeCummulativeQty: number;
-      scopeCertifiedQty: number;
-      scopeBalancedQty: number;
+      scopeCertifiedQty: number | string;
+      scopeBalancedQty: number | null;
       vendorId: number;
     }>;
     equipments: Array<{
@@ -209,6 +213,8 @@ const DPREditForm = ({
 
   // Add refs for input fields
   const dprDateRef = useRef<View>(null);
+  const projectNoDropdownController = useRef<IAutocompleteDropdownRef>(null);
+  const subProjectDropdownController = useRef<IAutocompleteDropdownRef>(null);
   const totalSupplyWeightRef = useRef<TextInput>(null);
   const keyHighlightProjectRef = useRef<TextInput>(null);
   const keyIssuesClientRef = useRef<TextInput>(null);
@@ -227,7 +233,10 @@ const DPREditForm = ({
     Helper: useRef<TextInput>(null),
   };
   const scopeItemRefs = useRef<{
-    [key: number]: { vendor: Picker<string>; certifiedQty: TextInput | null };
+    [key: number]: {
+      vendor: any;
+      certifiedQty: TextInput | null;
+    };
   }>({});
   const equipmentRefs = useRef<{ [key: number]: TextInput | null }>({});
   const flowRemarksRef = useRef<TextInput>(null);
@@ -255,8 +264,10 @@ const DPREditForm = ({
             item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
-            certifiedQty: numValue,
-            balanceQty: balanceQty >= 0 ? balanceQty : 0,
+            certifiedQty: value,
+            balanceQty: parseFloat(
+              (balanceQty >= 0 ? balanceQty : 0).toFixed(2)
+            ),
           };
         }
         return item;
@@ -356,35 +367,16 @@ const DPREditForm = ({
       }
     }
 
-    // Validate scope items
-    for (const item of scopeItems) {
-      if (!item.selectedVendor) {
-        Alert.alert(
-          "Validation Error",
-          `Please select a vendor for scope item: ${item.scopes}`
-        );
-        scopeItemRefs.current[item.id]?.vendor?.focus();
-        return false;
-      }
+    // Validate equipment quantities
+    for (const equipment of equipments) {
       if (
-        item.certifiedQty &&
-        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+        equipment.count === undefined ||
+        equipment.count === null ||
+        equipment.count < 0
       ) {
         Alert.alert(
           "Validation Error",
-          `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
-        );
-        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
-        return false;
-      }
-    }
-
-    // Validate equipment quantities
-    for (const equipment of equipments) {
-      if (!equipment.count || equipment.count <= 0) {
-        Alert.alert(
-          "Validation Error",
-          `Please enter count for equipment: ${equipment.equipmentName}`
+          `Please enter a valid count for equipment: ${equipment.equipmentName}`
         );
         equipmentRefs.current[equipment.id]?.focus();
         return false;
@@ -504,76 +496,77 @@ const DPREditForm = ({
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Building Details Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Building Details</Text>
-        <View style={styles.formGroup}>
-          <RequiredLabel label="Project Number" />
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            value={initialData?.projectNumber}
-            editable={false}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <RequiredLabel label="Name of Project" />
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            value={initialData?.projectName}
-            editable={false}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <RequiredLabel label="DPR Date" />
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text>{formatDate(dprDate)}</Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={dprDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={onDprDateChange}
+    <AutocompleteDropdownContextProvider>
+      <ScrollView style={styles.container}>
+        {/* Building Details Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Building Details</Text>
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Project Number" />
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.projectNumber}
+              editable={false}
             />
-          )}
-        </View>
+          </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Total Supply Weight</Text>
-          <TextInput
-            ref={totalSupplyWeightRef}
-            style={styles.input}
-            placeholder="Enter total supply weight"
-            value={totalSupplyWeight}
-            onChangeText={setTotalSupplyWeight}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
+          <View style={styles.formGroup}>
+            <RequiredLabel label="Name of Project" />
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={initialData?.projectName}
+              editable={false}
+            />
+          </View>
 
-      {/* Scope Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SCOPE</Text>
-        {scopeItems.map((item) => (
-          <View key={item.id} style={styles.scopeItemContainer}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Scope Item</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={`${item.scopes} (${item.uom})`}
-                editable={false}
+          <View style={styles.formGroup}>
+            <RequiredLabel label="DPR Date" />
+            <TouchableOpacity
+              style={[styles.input, styles.disabledInput]}
+              // onPress={() => setShowDatePicker(true)}
+            >
+              <Text>{formatDate(dprDate)}</Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={dprDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onDprDateChange}
               />
-            </View>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Vendor Code *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
+            )}
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Total Supply Weight</Text>
+            <TextInput
+              ref={totalSupplyWeightRef}
+              style={[styles.input, styles.disabledInput]}
+              placeholder="Enter total supply weight"
+              value={totalSupplyWeight}
+              onChangeText={setTotalSupplyWeight}
+              keyboardType="decimal-pad"
+              editable={false}
+            />
+          </View>
+        </View>
+
+        {/* Scope Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SCOPE</Text>
+          {scopeItems.map((item) => (
+            <View key={item.id} style={styles.scopeItemContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Scope Item</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={`${item.scopes} (${item.uom})`}
+                  editable={false}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Vendor Code *</Text>
+                <AutocompleteDropdown
                   ref={(el) => {
                     if (el) {
                       scopeItemRefs.current[item.id] = {
@@ -583,259 +576,290 @@ const DPREditForm = ({
                       };
                     }
                   }}
-                  selectedValue={item.selectedVendor?.toString()}
-                  onValueChange={(value) => {
-                    setScopeItems((prevItems) =>
-                      prevItems.map((prevItem) =>
-                        prevItem.id === item.id
-                          ? { ...prevItem, selectedVendor: Number(value) }
-                          : prevItem
-                      )
-                    );
+                  initialValue={item.selectedVendor?.toString()}
+                  onSelectItem={(selectedItem) => {
+                    if (selectedItem) {
+                      setScopeItems((prevItems) =>
+                        prevItems.map((prevItem) =>
+                          prevItem.id === item.id
+                            ? {
+                                ...prevItem,
+                                selectedVendor: parseInt(selectedItem.id),
+                              }
+                            : prevItem
+                        )
+                      );
+                    } else {
+                      setScopeItems((prevItems) =>
+                        prevItems.map((prevItem) =>
+                          prevItem.id === item.id
+                            ? { ...prevItem, selectedVendor: null }
+                            : prevItem
+                        )
+                      );
+                    }
                   }}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select Vendor" value={null} />
-                  {vendor.map((v) => (
-                    <Picker.Item key={v.value} label={v.text} value={v.value} />
-                  ))}
-                </Picker>
+                  dataSet={subProjectVendors.map((vendor) => ({
+                    id: vendor.id.toString(),
+                    title: vendor.vendorDetails,
+                  }))}
+                  containerStyle={styles.dropdownContainer}
+                  inputContainerStyle={styles.dropdownInputContainer}
+                  textInputProps={{
+                    placeholder: "-- Select Project --",
+                    style: styles.dropdownTextInput,
+                  }}
+                  suggestionsListContainerStyle={{
+                    backgroundColor: COLORS.background,
+                  }}
+                  suggestionsListTextStyle={{
+                    color: COLORS.text,
+                  }}
+                  EmptyResultComponent={
+                    <Text style={{ padding: 10, fontSize: SIZES.medium }}>
+                      No vendors found
+                    </Text>
+                  }
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Scope Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.scopeQuantity.toString()}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Cumulative Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.scopeCumQuantity.toString()}
+                  editable={false}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Certified Qty</Text>
+                <TextInput
+                  ref={(el) => {
+                    if (el) {
+                      scopeItemRefs.current[item.id] = {
+                        ...(scopeItemRefs.current[item.id] || {}),
+                        certifiedQty: el,
+                      };
+                    }
+                  }}
+                  style={[
+                    styles.input,
+                    item.certifiedQty !== undefined &&
+                    parseFloat(item.certifiedQty as string) >
+                      item.scopeQuantity - item.scopeCumQuantity
+                      ? styles.errorInput
+                      : null,
+                  ]}
+                  value={item.certifiedQty?.toString() || ""}
+                  onChangeText={(value) =>
+                    handleCertifiedQtyChange(item.id, value)
+                  }
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Balance Qty</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={item.balanceQty?.toString() || "0"}
+                  editable={false}
+                />
               </View>
             </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Scope Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.scopeQuantity.toString()}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Cumulative Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.scopeCumQuantity.toString()}
-                editable={false}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Certified Qty</Text>
-              <TextInput
-                ref={(el) => {
-                  if (el) {
-                    scopeItemRefs.current[item.id] = {
-                      ...(scopeItemRefs.current[item.id] || {}),
-                      certifiedQty: el,
-                    };
-                  }
-                }}
-                style={[
-                  styles.input,
-                  item.certifiedQty &&
-                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
-                    ? styles.errorInput
-                    : null,
-                ]}
-                value={item.certifiedQty?.toString() || ""}
-                onChangeText={(value) =>
-                  handleCertifiedQtyChange(item.id, value)
-                }
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Balance Qty</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={item.balanceQty?.toString() || "0"}
-                editable={false}
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Key Highlights Section */}
-      <View style={styles.section}>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Highlights - Project</Text>
-          <TextInput
-            ref={keyHighlightProjectRef}
-            style={styles.textArea}
-            multiline
-            numberOfLines={3}
-            placeholder="Enter key highlights"
-            value={keyHighlightProject}
-            onChangeText={setKeyHighlightProject}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Issues - Client</Text>
-          <TextInput
-            ref={keyIssuesClientRef}
-            style={styles.textArea}
-            multiline
-            numberOfLines={3}
-            placeholder="Enter client issues"
-            value={keyIssuesClient}
-            onChangeText={setKeyIssuesClient}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Key Issues - TBSPL</Text>
-          <TextInput
-            ref={keyIssuesTBSPLRef}
-            style={styles.textArea}
-            multiline
-            numberOfLines={3}
-            placeholder="Enter TBSPL issues"
-            value={keyIssuesTBSPL}
-            onChangeText={setKeyIssuesTBSPL}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Remark</Text>
-          <TextInput
-            ref={remarkRef}
-            style={styles.textArea}
-            multiline
-            numberOfLines={3}
-            placeholder="Enter remarks"
-            value={remark}
-            onChangeText={setRemark}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Lost Time</Text>
-          <TextInput
-            ref={lostTimeRef}
-            style={styles.input}
-            placeholder="Enter lost time"
-            value={lostTime}
-            onChangeText={setLostTime}
-          />
-        </View>
-      </View>
-
-      {/* Manpower Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>MANPOWER</Text>
-        <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Role</Text>
-            <Text style={styles.tableHeaderText}>Count</Text>
-          </View>
-          {(Object.keys(manpower) as Array<keyof ManpowerState>).map((key) => (
-            <View key={key} style={styles.tableRow}>
-              <Text style={styles.tableCell}>
-                {key.replace(/([A-Z])/g, " $1").trim()}
-              </Text>
-              <TextInput
-                ref={manpowerRefs[key]}
-                style={styles.tableCellInput}
-                keyboardType="numeric"
-                placeholder=""
-                value={manpower[key]}
-                onChangeText={(newValue) =>
-                  setManpower((prev) => ({ ...prev, [key]: newValue }))
-                }
-              />
-            </View>
           ))}
         </View>
-      </View>
 
-      {/* Equipment Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EQUIPMENT</Text>
-        <View style={styles.tableContainer}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Equipment</Text>
-            <Text style={styles.tableHeaderText}>Count</Text>
+        {/* Key Highlights Section */}
+        <View style={styles.section}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Key Highlights - Project</Text>
+            <TextInput
+              ref={keyHighlightProjectRef}
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="Enter key highlights"
+              value={keyHighlightProject}
+              onChangeText={setKeyHighlightProject}
+            />
           </View>
-          {equipments.map((equipment) => (
-            <View key={equipment.id} style={styles.tableRow}>
-              <Text style={styles.tableCell}>{equipment.equipmentName}</Text>
-              <TextInput
-                ref={(el) => {
-                  if (el) {
-                    equipmentRefs.current[equipment.id] = el;
-                  }
-                }}
-                style={styles.tableCellInput}
-                keyboardType="numeric"
-                placeholder=""
-                value={equipment.count?.toString()}
-                onChangeText={(value) =>
-                  handleEquipmentCountChange(equipment.id, value)
-                }
-              />
-            </View>
-          ))}
-        </View>
-      </View>
 
-      {/* Remarks Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Remarks</Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Remarks</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Enter Remarks"
-            multiline
-            numberOfLines={3}
-            ref={flowRemarksRef}
-            value={flowRemarks}
-            onChangeText={(text) => setFlowRemarks(text)}
-          />
-        </View>
-      </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Key Issues - Client</Text>
+            <TextInput
+              ref={keyIssuesClientRef}
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="Enter client issues"
+              value={keyIssuesClient}
+              onChangeText={setKeyIssuesClient}
+            />
+          </View>
 
-      {/* Buttons */}
-      {isSubmitting ? (
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonWrapper}>
-            <CustomButton
-              title="Submitting..."
-              onPress={() => {}}
-              variant="primary"
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Key Issues - TBSPL</Text>
+            <TextInput
+              ref={keyIssuesTBSPLRef}
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="Enter TBSPL issues"
+              value={keyIssuesTBSPL}
+              onChangeText={setKeyIssuesTBSPL}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Remark</Text>
+            <TextInput
+              ref={remarkRef}
+              style={styles.textArea}
+              multiline
+              numberOfLines={3}
+              placeholder="Enter remarks"
+              value={remark}
+              onChangeText={setRemark}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Lost Time</Text>
+            <TextInput
+              ref={lostTimeRef}
+              style={styles.input}
+              placeholder="Enter lost time"
+              value={lostTime}
+              onChangeText={setLostTime}
             />
           </View>
         </View>
-      ) : (
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonWrapper}>
-            <CustomButton
-              title="Update"
-              onPress={handleUpdate}
-              variant="primary"
-              disabled={isSubmitting}
+
+        {/* Manpower Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>MANPOWER</Text>
+          <View style={styles.tableContainer}>
+            <View style={styles.tableHeader}>
+              <Text style={styles.tableHeaderText}>Role</Text>
+              <Text style={styles.tableHeaderText}>Count</Text>
+            </View>
+            {(Object.keys(manpower) as Array<keyof ManpowerState>).map(
+              (key) => (
+                <View key={key} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>
+                    {key.replace(/([A-Z])/g, " $1").trim()}
+                  </Text>
+                  <TextInput
+                    ref={manpowerRefs[key]}
+                    style={styles.tableCellInput}
+                    keyboardType="numeric"
+                    placeholder=""
+                    value={manpower[key]}
+                    onChangeText={(newValue) =>
+                      setManpower((prev) => ({ ...prev, [key]: newValue }))
+                    }
+                  />
+                </View>
+              )
+            )}
+          </View>
+        </View>
+
+        {/* Equipment Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>EQUIPMENT</Text>
+          <View style={styles.tableContainer}>
+            <View style={styles.tableHeader}>
+              <Text style={styles.tableHeaderText}>Equipment</Text>
+              <Text style={styles.tableHeaderText}>Count</Text>
+            </View>
+            {equipments.map((equipment) => (
+              <View key={equipment.id} style={styles.tableRow}>
+                <Text style={styles.tableCell}>{equipment.equipmentName}</Text>
+                <TextInput
+                  ref={(el) => {
+                    if (el) {
+                      equipmentRefs.current[equipment.id] = el;
+                    }
+                  }}
+                  style={styles.tableCellInput}
+                  keyboardType="numeric"
+                  placeholder=""
+                  value={equipment.count?.toString()}
+                  onChangeText={(value) =>
+                    handleEquipmentCountChange(equipment.id, value)
+                  }
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Remarks Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Remarks</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Remarks</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Enter Remarks"
+              multiline
+              numberOfLines={3}
+              ref={flowRemarksRef}
+              value={flowRemarks}
+              onChangeText={(text) => setFlowRemarks(text)}
             />
           </View>
         </View>
-      )}
 
-      {/* Add CustomAlert at the end of the component */}
-      <CustomAlert
-        visible={alert.visible}
-        message={alert.message}
-        type={alert.type}
-        onClose={() => {
-          setAlert((prev) => ({ ...prev, visible: false }));
-        }}
-        redirect={alert.redirect}
-        redirectPath={alert.redirectPath}
-      />
-    </ScrollView>
+        {/* Buttons */}
+        {isSubmitting ? (
+          <View style={styles.buttonContainer}>
+            <View style={styles.buttonWrapper}>
+              <CustomButton
+                title="Submitting..."
+                onPress={() => {}}
+                variant="primary"
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.buttonContainer}>
+            <View style={styles.buttonWrapper}>
+              <CustomButton
+                title="Update"
+                onPress={handleUpdate}
+                variant="primary"
+                disabled={isSubmitting}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Add CustomAlert at the end of the component */}
+        <CustomAlert
+          visible={alert.visible}
+          message={alert.message}
+          type={alert.type}
+          onClose={() => {
+            setAlert((prev) => ({ ...prev, visible: false }));
+          }}
+          redirect={alert.redirect}
+          redirectPath={alert.redirectPath}
+        />
+      </ScrollView>
+    </AutocompleteDropdownContextProvider>
   );
 };
 
@@ -896,6 +920,24 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  dropdownContainer: {
+    flex: 1,
+    width: "100%",
+    zIndex: 10,
+  },
+  dropdownInputContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    paddingHorizontal: 10,
+  },
+  dropdownTextInput: {
+    paddingVertical: 12,
+    fontSize: 16,
+    color: COLORS.text,
+    width: "100%",
   },
   infoContainer: {
     marginVertical: 10,

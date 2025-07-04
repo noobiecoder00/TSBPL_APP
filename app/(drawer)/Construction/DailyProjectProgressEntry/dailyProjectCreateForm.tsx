@@ -24,6 +24,7 @@ import {
 import {
   AutocompleteDropdown,
   AutocompleteDropdownContextProvider,
+  IAutocompleteDropdownRef,
 } from "react-native-autocomplete-dropdown";
 import { useDispatch } from "react-redux";
 
@@ -158,8 +159,8 @@ const DailyProjectCreateForm = () => {
   // Add refs for input fields
   const projectNoRef = useRef(null);
   const subProjectRef = useRef(null);
-  const projectNoDropdownController = useRef(null);
-  const subProjectDropdownController = useRef(null);
+  const projectNoDropdownController = useRef<IAutocompleteDropdownRef>(null);
+  const subProjectDropdownController = useRef<IAutocompleteDropdownRef>(null);
   const dprDateRef = useRef<View>(null);
   const totalSupplyWeightRef = useRef<TextInput>(null);
   const keyHighlightProjectRef = useRef<TextInput>(null);
@@ -320,7 +321,9 @@ const DailyProjectCreateForm = () => {
           const items = response.data.data.map((item: any) => ({
             ...item,
             certifiedQty: 0,
-            balanceQty: parseFloat((item.scopeQuantity - item.scopeCumQuantity).toFixed(2)),
+            balanceQty: parseFloat(
+              (item.scopeQuantity - item.scopeCumQuantity).toFixed(2)
+            ),
             selectedVendor: null,
           }));
           setScopeItems(items);
@@ -372,7 +375,9 @@ const DailyProjectCreateForm = () => {
           return {
             ...item,
             certifiedQty: value,
-            balanceQty: parseFloat((balanceQty >= 0 ? balanceQty : 0).toFixed(2)),
+            balanceQty: parseFloat(
+              (balanceQty >= 0 ? balanceQty : 0).toFixed(2)
+            ),
           };
         }
         return item;
@@ -478,7 +483,8 @@ const DailyProjectCreateForm = () => {
       }
       if (
         item.certifiedQty &&
-        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+        (item.certifiedQty as number) >
+          item.scopeQuantity - item.scopeCumQuantity
       ) {
         Alert.alert(
           "Validation Error",
