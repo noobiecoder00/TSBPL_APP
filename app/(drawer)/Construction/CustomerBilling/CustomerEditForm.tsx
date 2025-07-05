@@ -25,8 +25,8 @@ interface ScopeItem {
   uom: string;
   scopeQuantity: number;
   scopeCumQuantity: number;
-  certifiedQty?: number;
-  balanceQty?: number;
+  certifiedQty?: number | string;
+  balanceQty?: number | null;
   selectedVendor?: number | null;
 }
 
@@ -47,8 +47,8 @@ interface CustomerEditFormProps {
       scopeUOMName: string;
       scopeQty: number;
       scopeCummulativeQty: number;
-      scopeCertifiedQty: number;
-      scopeBalancedQty: number;
+      scopeCertifiedQty: number | string;
+      scopeBalancedQty: number | null;
     }>;
   };
   isSubmitting: boolean;
@@ -121,8 +121,10 @@ const CustomerEditForm = ({
             item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
-            certifiedQty: numValue,
-            balanceQty: balanceQty >= 0 ? balanceQty : 0,
+            certifiedQty: value,
+            balanceQty: parseFloat(
+              (balanceQty >= 0 ? balanceQty : 0).toFixed(2)
+            ),
           };
         }
         return item;
@@ -135,7 +137,8 @@ const CustomerEditForm = ({
     for (const item of scopeItems) {
       if (
         item.certifiedQty &&
-        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+        (item.certifiedQty as number) >
+          item.scopeQuantity - item.scopeCumQuantity
       ) {
         Alert.alert(
           "Validation Error",
@@ -322,14 +325,16 @@ const CustomerEditForm = ({
                 ref={(el) => {
                   if (el) {
                     scopeItemRefs.current[item.id] = {
+                      ...(scopeItemRefs.current[item.id] || {}),
                       certifiedQty: el,
                     };
                   }
                 }}
                 style={[
                   styles.input,
-                  item.certifiedQty &&
-                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+                  item.certifiedQty !== undefined &&
+                  parseFloat(item.certifiedQty as string) >
+                    item.scopeQuantity - item.scopeCumQuantity
                     ? styles.errorInput
                     : null,
                 ]}
@@ -337,7 +342,7 @@ const CustomerEditForm = ({
                 onChangeText={(value) =>
                   handleCertifiedQtyChange(item.id, value)
                 }
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
             </View>
 

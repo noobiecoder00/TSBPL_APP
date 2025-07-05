@@ -669,7 +669,7 @@ const CustomerBillingDetails = () => {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Action Taken</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, styles.disabledInput]}
                         value={
                           flow.status_to === "approve"
                             ? "Approved"
@@ -688,7 +688,11 @@ const CustomerBillingDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Remarks</Text>
                   <TextInput
-                    style={[styles.input, styles.multilineInput]}
+                    style={[
+                      styles.input,
+                      styles.disabledInput,
+                      styles.multilineInput,
+                    ]}
                     value={flow.actionTaken}
                     editable={false}
                     multiline
@@ -699,7 +703,7 @@ const CustomerBillingDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Action Taken Date Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.disabledInput]}
                     value={formatDateTime(flow.actionTakenDatetime)}
                     editable={false}
                   />

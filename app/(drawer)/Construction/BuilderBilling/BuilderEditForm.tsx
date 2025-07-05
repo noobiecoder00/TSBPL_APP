@@ -26,8 +26,8 @@ interface ScopeItem {
   uom: string;
   scopeQuantity: number;
   scopeCumQuantity: number;
-  certifiedQty?: number;
-  balanceQty?: number;
+  certifiedQty?: number | string;
+  balanceQty?: number | null;
 }
 
 interface UserData {
@@ -53,8 +53,8 @@ interface BuilderEditFormProps {
       scopeUOMName: string;
       scopeQty: number;
       scopeCummulativeQty: number;
-      scopeCertifiedQty: number;
-      scopeBalancedQty: number;
+      scopeCertifiedQty: number | string;
+      scopeBalancedQty: number | null;
     }>;
   };
   isSubmitting: boolean;
@@ -143,7 +143,9 @@ const BuilderEditForm = ({
           return {
             ...item,
             certifiedQty: numValue,
-            balanceQty: balanceQty >= 0 ? balanceQty : 0,
+            balanceQty: parseFloat(
+              (balanceQty >= 0 ? balanceQty : 0).toFixed(2)
+            ),
           };
         }
         return item;
@@ -180,7 +182,8 @@ const BuilderEditForm = ({
     for (const item of scopeItems) {
       if (
         item.certifiedQty &&
-        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+        (item.certifiedQty as number) >
+          item.scopeQuantity - item.scopeCumQuantity
       ) {
         Alert.alert(
           "Validation Error",
@@ -414,8 +417,9 @@ const BuilderEditForm = ({
                 }}
                 style={[
                   styles.input,
-                  item.certifiedQty &&
-                  item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+                  item.certifiedQty !== undefined &&
+                  parseFloat(item.certifiedQty as string) >
+                    item.scopeQuantity - item.scopeCumQuantity
                     ? styles.errorInput
                     : null,
                 ]}
@@ -423,7 +427,7 @@ const BuilderEditForm = ({
                 onChangeText={(value) =>
                   handleCertifiedQtyChange(item.id, value)
                 }
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
             </View>
 

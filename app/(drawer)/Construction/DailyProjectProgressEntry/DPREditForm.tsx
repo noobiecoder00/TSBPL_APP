@@ -207,9 +207,6 @@ const DPREditForm = ({
       count: eq.count,
     }))
   );
-  const [subProjectVendors, setSubProjectVendors] = useState<
-    SubProjectVendor[]
-  >([]);
 
   // Add refs for input fields
   const dprDateRef = useRef<View>(null);
@@ -363,6 +360,29 @@ const DPREditForm = ({
           `Please enter count for ${key.replace(/([A-Z])/g, " $1").trim()}`
         );
         manpowerRefs[key as keyof typeof manpowerRefs].current?.focus();
+        return false;
+      }
+    }
+
+    // Validate scope items
+    for (const item of scopeItems) {
+      if (!item.selectedVendor) {
+        Alert.alert(
+          "Validation Error",
+          `Please select a vendor for scope item: ${item.scopes}`
+        );
+        return false;
+      }
+      if (
+        item.certifiedQty &&
+        (item.certifiedQty as number) >
+          item.scopeQuantity - item.scopeCumQuantity
+      ) {
+        Alert.alert(
+          "Validation Error",
+          `Certified quantity cannot be greater than scope quantity for: ${item.scopes}`
+        );
+        scopeItemRefs.current[item.id]?.certifiedQty?.focus();
         return false;
       }
     }
@@ -599,9 +619,9 @@ const DPREditForm = ({
                       );
                     }
                   }}
-                  dataSet={subProjectVendors.map((vendor) => ({
-                    id: vendor.id.toString(),
-                    title: vendor.vendorDetails,
+                  dataSet={vendor.map((v) => ({
+                    id: v.value,
+                    title: v.text,
                   }))}
                   containerStyle={styles.dropdownContainer}
                   inputContainerStyle={styles.dropdownInputContainer}

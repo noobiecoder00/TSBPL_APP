@@ -6,7 +6,6 @@ import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
 import { router } from "expo-router";
@@ -20,7 +19,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-
+import {
+  AutocompleteDropdown,
+  AutocompleteDropdownContextProvider,
+  IAutocompleteDropdownRef,
+} from "react-native-autocomplete-dropdown";
 import { useDispatch } from "react-redux";
 
 interface ProjectNo {
@@ -39,7 +42,7 @@ interface ScopeItem {
   uom: string;
   scopeQuantity: number;
   scopeCumQuantity: number;
-  certifiedQty?: number;
+  certifiedQty?: number | string;
   balanceQty?: number | null;
   selectedVendor?: number | null;
 }
@@ -96,8 +99,10 @@ const CustomerBillingCreateForm = () => {
   });
 
   // Add refs for input fields
-  const projectNoRef = useRef<Picker<number | null>>(null);
-  const subProjectRef = useRef<Picker<number | null>>(null);
+  const projectNoRef = useRef(null);
+  const subProjectRef = useRef(null);
+  const projectNoDropdownController = useRef<IAutocompleteDropdownRef>(null);
+  const subProjectDropdownController = useRef<IAutocompleteDropdownRef>(null);
   const scopeItemRefs = useRef<{
     [key: number]: { certifiedQty: TextInput | null };
   }>({});
@@ -116,6 +121,8 @@ const CustomerBillingCreateForm = () => {
     setSelectedSubProject(null);
     setProjectDetails(null);
     setScopeItems([]);
+    projectNoDropdownController.current?.clear();
+    subProjectDropdownController.current?.clear();
   };
 
   const fetchProjectNos = async () => {
@@ -185,7 +192,9 @@ const CustomerBillingCreateForm = () => {
           const items = response.data.data.map((item: any) => ({
             ...item,
             certifiedQty: 0,
-            balanceQty: null,
+            balanceQty: parseFloat(
+              (item.scopeQuantity - item.scopeCumQuantity).toFixed(2)
+            ),
             selectedVendor: null,
           }));
           setScopeItems(items);
@@ -214,8 +223,10 @@ const CustomerBillingCreateForm = () => {
             item.scopeQuantity - item.scopeCumQuantity - numValue;
           return {
             ...item,
-            certifiedQty: numValue,
-            balanceQty: balanceQty >= 0 ? balanceQty : 0,
+            certifiedQty: value,
+            balanceQty: parseFloat(
+              (balanceQty >= 0 ? balanceQty : 0).toFixed(2)
+            ),
           };
         }
         return item;
@@ -237,12 +248,12 @@ const CustomerBillingCreateForm = () => {
   const validateForm = () => {
     if (!selectedProjectNo) {
       Alert.alert("Validation Error", "Please select a project number.");
-      projectNoRef.current?.focus();
+      projectNoDropdownController.current?.toggle();
       return false;
     }
     if (!selectedSubProject) {
       Alert.alert("Validation Error", "Please select a sub project.");
-      subProjectRef.current?.focus();
+      subProjectDropdownController.current?.toggle();
       return false;
     }
 
@@ -250,7 +261,8 @@ const CustomerBillingCreateForm = () => {
     for (const item of scopeItems) {
       if (
         item.certifiedQty &&
-        item.certifiedQty > item.scopeQuantity - item.scopeCumQuantity
+        (item.certifiedQty as number) >
+          item.scopeQuantity - item.scopeCumQuantity
       ) {
         Alert.alert(
           "Validation Error",
@@ -381,8 +393,19 @@ const CustomerBillingCreateForm = () => {
     );
   }, []);
 
+  // Transform data for autocomplete dropdown
+  const projectNoItems = projectNos.map((project) => ({
+    id: project.value.toString(),
+    title: project.text,
+  }));
+
+  const subProjectItems = subProjects.map((subProject) => ({
+    id: subProject.id.toString(),
+    title: subProject.buildingName,
+  }));
+
   return (
-    <View style={{ flex: 1 }}>
+    <AutocompleteDropdownContextProvider>
       <Loader />
       <ScrollView style={styles.container}>
         {/* Building Details Section */}
@@ -390,44 +413,84 @@ const CustomerBillingCreateForm = () => {
           <Text style={styles.sectionTitle}>Building Details</Text>
           <View style={styles.formGroup}>
             <RequiredLabel label="Project Number" />
-            <View style={styles.pickerContainer}>
-              <Picker
-                ref={projectNoRef}
-                selectedValue={selectedProjectNo}
-                onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="-- Select Project --" value={null} />
-                {projectNos.map((projectNo) => (
-                  <Picker.Item
-                    key={projectNo.value}
-                    label={projectNo.text}
-                    value={projectNo.value}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <AutocompleteDropdown
+              ref={projectNoRef}
+              controller={(controller) => {
+                projectNoDropdownController.current = controller;
+              }}
+              clearOnFocus={false}
+              closeOnBlur={true}
+              closeOnSubmit={false}
+              initialValue={
+                selectedProjectNo ? selectedProjectNo.toString() : undefined
+              }
+              onSelectItem={(item) => {
+                if (item) {
+                  setSelectedProjectNo(parseInt(item.id));
+                } else {
+                  setSelectedProjectNo(null);
+                }
+              }}
+              dataSet={projectNoItems}
+              containerStyle={styles.dropdownContainer}
+              inputContainerStyle={styles.dropdownInputContainer}
+              textInputProps={{
+                placeholder: "-- Select Project --",
+                style: styles.dropdownTextInput,
+              }}
+              suggestionsListContainerStyle={{
+                backgroundColor: COLORS.background,
+              }}
+              suggestionsListTextStyle={{
+                color: COLORS.text,
+              }}
+              EmptyResultComponent={
+                <Text style={{ padding: 10, fontSize: SIZES.medium }}>
+                  No projects found
+                </Text>
+              }
+            />
           </View>
 
           <View style={styles.formGroup}>
             <RequiredLabel label="Sub Project" />
-            <View style={styles.pickerContainer}>
-              <Picker
-                ref={subProjectRef}
-                selectedValue={selectedSubProject}
-                onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label="-- Select Sub Project --" value={null} />
-                {subProjects.map((subProject) => (
-                  <Picker.Item
-                    key={subProject.id}
-                    label={subProject.buildingName}
-                    value={subProject.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <AutocompleteDropdown
+              ref={subProjectRef}
+              controller={(controller) => {
+                subProjectDropdownController.current = controller;
+              }}
+              clearOnFocus={false}
+              closeOnBlur={true}
+              closeOnSubmit={false}
+              initialValue={
+                selectedSubProject ? selectedSubProject.toString() : undefined
+              }
+              onSelectItem={(item) => {
+                if (item) {
+                  setSelectedSubProject(parseInt(item.id));
+                } else {
+                  setSelectedSubProject(null);
+                }
+              }}
+              dataSet={subProjectItems}
+              containerStyle={styles.dropdownContainer}
+              inputContainerStyle={styles.dropdownInputContainer}
+              textInputProps={{
+                placeholder: "-- Select Project --",
+                style: styles.dropdownTextInput,
+              }}
+              suggestionsListContainerStyle={{
+                backgroundColor: COLORS.background,
+              }}
+              suggestionsListTextStyle={{
+                color: COLORS.text,
+              }}
+              EmptyResultComponent={
+                <Text style={{ padding: 10, fontSize: SIZES.medium }}>
+                  No sub projects found
+                </Text>
+              }
+            />
           </View>
 
           {projectDetails && (
@@ -502,8 +565,8 @@ const CustomerBillingCreateForm = () => {
                   }}
                   style={[
                     styles.input,
-                    item.certifiedQty &&
-                    item.certifiedQty >
+                    item.certifiedQty !== undefined &&
+                    parseFloat(item.certifiedQty as string) >
                       item.scopeQuantity - item.scopeCumQuantity
                       ? styles.errorInput
                       : null,
@@ -558,7 +621,7 @@ const CustomerBillingCreateForm = () => {
           redirectPath={alert.redirectPath}
         />
       </ScrollView>
-    </View>
+    </AutocompleteDropdownContextProvider>
   );
 };
 
@@ -611,14 +674,23 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: "top",
   },
-  pickerContainer: {
+  dropdownContainer: {
+    flex: 1,
+    width: "100%",
+    zIndex: 10,
+  },
+  dropdownInputContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.gray,
-    borderRadius: 8,
-    overflow: "hidden",
+    paddingHorizontal: 10,
   },
-  picker: {
-    height: 50,
+  dropdownTextInput: {
+    paddingVertical: 12,
+    fontSize: 16,
+    color: COLORS.text,
+    width: "100%",
   },
   infoContainer: {
     marginVertical: 10,

@@ -1108,8 +1108,8 @@ const DailyProjectDetails = () => {
                   count: eq.count || 0,
                 })),
               }}
-              vendor={vendor}
               isSubmitting={isSubmitting}
+              vendor={vendor}
             />
           </>
         )}
