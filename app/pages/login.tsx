@@ -23,7 +23,6 @@ import DropDownPicker from "react-native-dropdown-picker";
 interface LoginResponse {
   success: boolean;
   message: string;
-  token: string | null;
   userInfo: {
     id: number;
     name: string;
@@ -32,18 +31,19 @@ interface LoginResponse {
     locationIds: number[];
     accessibleActions: string[];
     force: string;
+    token: string;
   };
 }
 
 interface VendorLoginResponse {
   success: boolean;
   message: string;
-  token: string | null;
   data: {
     vendorId: number;
     vendorName: string;
     vendorCode: string;
     force: string;
+    token: string;
   };
 }
 
@@ -139,6 +139,7 @@ export default function LoginScreen() {
             accessibleActions: userResponse.userInfo.accessibleActions,
             force: userResponse.userInfo.force,
             type: "User",
+            token: userResponse.userInfo.token,
           };
         } else {
           const vendorResponse = response.data as VendorLoginResponse;
@@ -149,13 +150,20 @@ export default function LoginScreen() {
             vendorCode: vendorResponse.data.vendorCode,
             force: vendorResponse.data.force,
             type: "Vendor",
+            token: vendorResponse.data.token,
           };
         }
 
         // console.log("Final userData:", userData);
         await AsyncStorage.setItem("userData", JSON.stringify(userData));
         //console.log("User data saved to AsyncStorage");
-        router.replace("/(drawer)/home");
+        if (userData.type === "User") {
+          router.replace("/(drawer)/home");
+        } else {
+          router.replace("/(drawer)/Vendor/cwAttendance/cwAttendanceIndex");
+        }
+
+        // router.replace("/(drawer)/home");
         //console.log("Navigated to /home");
       } else {
         console.log("Login failed:", response.data);
@@ -253,7 +261,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../../assets/images/tsbpl_app_icon.png")}
+        source={require("../../assets/images/netra_logo.png")}
         style={styles.logo}
       />
       <View style={styles.formContainer}>
@@ -275,12 +283,12 @@ export default function LoginScreen() {
           <Text style={styles.errorText}>{errors.loginType}</Text>
         )}
 
-        <Text style={styles.label}>Pno</Text>
+        <Text style={styles.label}>Employee ID</Text>
         <TextInput
           style={[styles.input, errors.email && styles.inputError]}
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter your Pno"
+          placeholder="Enter your Emp ID"
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
@@ -370,10 +378,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 200,
+    width: 300,
     height: 200,
     resizeMode: "contain",
-    marginBottom: -40,
+    marginBottom: -20,
+    marginRight: 10,
   },
   formContainer: {
     width: "100%",

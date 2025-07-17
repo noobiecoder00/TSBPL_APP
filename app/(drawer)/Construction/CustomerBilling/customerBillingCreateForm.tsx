@@ -575,7 +575,7 @@ const CustomerBillingCreateForm = () => {
                   onChangeText={(value) =>
                     handleCertifiedQtyChange(item.id, value)
                   }
-                  keyboardType="numeric"
+                  keyboardType="decimal-pad"
                 />
               </View>
 

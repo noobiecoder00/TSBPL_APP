@@ -4,7 +4,6 @@ import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import {
   BarcodeScanningResult,
   CameraView,
@@ -12,10 +11,21 @@ import {
 } from "expo-camera";
 import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  AutocompleteDropdown,
+  AutocompleteDropdownContextProvider,
+  IAutocompleteDropdownRef,
+} from "react-native-autocomplete-dropdown";
 import { useDispatch } from "react-redux";
-
 interface ProjectNo {
   value: number;
   text: string;
@@ -46,6 +56,10 @@ const CWAttendance = () => {
   const [selectedSubProject, setSelectedSubProject] = useState<number | null>(
     null
   );
+  const projectNoRef = useRef(null);
+  const subProjectRef = useRef(null);
+  const projectNoDropdownController = useRef<IAutocompleteDropdownRef>(null);
+  const subProjectDropdownController = useRef<IAutocompleteDropdownRef>(null);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{
@@ -135,10 +149,12 @@ const CWAttendance = () => {
   const validateForm = () => {
     if (!selectedProjectNo) {
       Alert.alert("Please select a project number.");
+      projectNoDropdownController.current?.toggle();
       return false;
     }
     if (!selectedSubProject) {
       Alert.alert("Please select a sub project.");
+      subProjectDropdownController.current?.toggle();
       return false;
     }
     return true;
@@ -296,74 +312,139 @@ const CWAttendance = () => {
     setSubProjects([]);
     setSelectedSubProject(null);
     setIsScanning(false);
+    // Reset dropdown controllers
+    projectNoDropdownController.current?.clear();
+    subProjectDropdownController.current?.clear();
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.formGroup}>
-        <RequiredLabel label="Project Number" />
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedProjectNo}
-            onValueChange={(itemValue) => setSelectedProjectNo(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="-- Select Project --" value={null} />
-            {projectNos.map((projectNo) => (
-              <Picker.Item
-                key={projectNo.value}
-                label={projectNo.text}
-                value={projectNo.value}
-              />
-            ))}
-          </Picker>
-        </View>
-      </View>
+  // Transform data for autocomplete dropdown
+  const projectNoItems = projectNos.map((project) => ({
+    id: project.value.toString(),
+    title: project.text,
+  }));
 
-      <View style={styles.formGroup}>
-        <RequiredLabel label="Sub Project" />
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedSubProject}
-            onValueChange={(itemValue) => setSelectedSubProject(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="-- Select Sub Project --" value={null} />
-            {subProjects.map((subProject) => (
-              <Picker.Item
-                key={subProject.id}
-                label={subProject.buildingName}
-                value={subProject.id}
-              />
-            ))}
-          </Picker>
-        </View>
-      </View>
+  const subProjectItems = subProjects.map((subProject) => ({
+    id: subProject.id.toString(),
+    title: subProject.buildingName,
+  }));
+
+  return (
+    <AutocompleteDropdownContextProvider>
       {isScanning ? (
-        <CameraView
-          style={StyleSheet.absoluteFillObject}
-          facing="back"
-          onBarcodeScanned={handleBarcodeScanned}
-        />
+        <View style={StyleSheet.absoluteFill}>
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            onBarcodeScanned={handleBarcodeScanned}
+          />
+        </View>
       ) : (
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleTakeAttendance}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          style={styles.container}
         >
-          <Text style={styles.createButtonText}>Take Attendance</Text>
-        </TouchableOpacity>
+          <View style={{ zIndex: 2 }}>
+            <RequiredLabel label="Project Number" />
+            <AutocompleteDropdown
+              ref={projectNoRef}
+              controller={(controller) => {
+                projectNoDropdownController.current = controller;
+              }}
+              clearOnFocus={false}
+              closeOnBlur={true}
+              closeOnSubmit={false}
+              initialValue={
+                selectedProjectNo ? selectedProjectNo.toString() : undefined
+              }
+              onSelectItem={(item) => {
+                if (item) {
+                  setSelectedProjectNo(parseInt(item.id));
+                } else {
+                  setSelectedProjectNo(null);
+                }
+              }}
+              dataSet={projectNoItems}
+              containerStyle={styles.dropdownContainer}
+              inputContainerStyle={styles.dropdownInputContainer}
+              textInputProps={{
+                placeholder: "-- Select Project --",
+                style: styles.dropdownTextInput,
+              }}
+              suggestionsListContainerStyle={{
+                backgroundColor: COLORS.background,
+              }}
+              suggestionsListTextStyle={{
+                color: COLORS.text,
+              }}
+              EmptyResultComponent={
+                <Text style={{ padding: 10, fontSize: SIZES.medium }}>
+                  No projects found
+                </Text>
+              }
+            />
+          </View>
+
+          <View style={{ zIndex: 1, marginTop: 20 }}>
+            <RequiredLabel label="Sub Project" />
+            <AutocompleteDropdown
+              ref={subProjectRef}
+              controller={(controller) => {
+                subProjectDropdownController.current = controller;
+              }}
+              clearOnFocus={false}
+              closeOnBlur={true}
+              closeOnSubmit={false}
+              initialValue={
+                selectedSubProject ? selectedSubProject.toString() : undefined
+              }
+              onSelectItem={(item) => {
+                if (item) {
+                  setSelectedSubProject(parseInt(item.id));
+                } else {
+                  setSelectedSubProject(null);
+                }
+              }}
+              dataSet={subProjectItems}
+              containerStyle={styles.dropdownContainer}
+              inputContainerStyle={styles.dropdownInputContainer}
+              textInputProps={{
+                placeholder: "-- Select Sub Project --",
+                style: styles.dropdownTextInput,
+              }}
+              suggestionsListContainerStyle={{
+                backgroundColor: COLORS.background,
+              }}
+              suggestionsListTextStyle={{
+                color: COLORS.text,
+              }}
+              EmptyResultComponent={
+                <Text style={{ padding: 10, fontSize: SIZES.medium }}>
+                  No sub projects found
+                </Text>
+              }
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={handleTakeAttendance}
+          >
+            <Text style={styles.createButtonText}>Take Attendance</Text>
+          </TouchableOpacity>
+
+          <CustomAlert
+            visible={alert.visible}
+            message={alert.message}
+            type={alert.type}
+            onClose={() => {
+              setAlert((prev) => ({ ...prev, visible: false }));
+            }}
+            redirect={alert.redirect}
+            redirectPath={alert.redirectPath}
+          />
+        </ScrollView>
       )}
-      <CustomAlert
-        visible={alert.visible}
-        message={alert.message}
-        type={alert.type}
-        onClose={() => {
-          setAlert((prev) => ({ ...prev, visible: false }));
-        }}
-        redirect={alert.redirect}
-        redirectPath={alert.redirectPath}
-      />
-    </View>
+    </AutocompleteDropdownContextProvider>
   );
 };
 
@@ -376,9 +457,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   createButton: {
-    margin: 16,
+    margin: 2,
+    marginTop: 20,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     backgroundColor: COLORS.primary || "#4A90E2",
     borderRadius: 8,
     alignItems: "center",
@@ -399,13 +481,22 @@ const styles = StyleSheet.create({
   formGroup: {
     marginBottom: 16,
   },
-  pickerContainer: {
+  dropdownContainer: {
+    flex: 1,
+    width: "100%",
+    zIndex: 10,
+  },
+  dropdownInputContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.gray,
-    borderRadius: 8,
-    overflow: "hidden",
+    paddingHorizontal: 10,
   },
-  picker: {
-    height: 50,
+  dropdownTextInput: {
+    paddingVertical: 12,
+    fontSize: 16,
+    color: COLORS.text,
+    width: "100%",
   },
 });

@@ -29,7 +29,7 @@ interface UserData {
   id: string;
 }
 
-const tpiExpiry = () => {
+const equipmentVendor = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
@@ -99,6 +99,7 @@ const tpiExpiry = () => {
 
       const items = response.data?.data ?? [];
       console.log("Items received:", items.length);
+      console.table(items);
 
       setData(items);
       setHasMore(false); // Since we're getting all data at once
@@ -139,12 +140,6 @@ const tpiExpiry = () => {
           <InfoRow label="Equipment Name" value={item.equipmentName} />
           <InfoRow label="TPI Expiry Date" value={item.tpI_ExpirationDate} />
           <InfoRow label="Last Checked On" value={item.lastCheckedOn} />
-          <InfoRow
-            label="Pending with"
-            value={item.pendingWith
-              ?.map((p: any) => `${p.name} (${p.roleName})`)
-              .join(", ")}
-          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -247,4 +242,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default tpiExpiry;
+export default equipmentVendor;

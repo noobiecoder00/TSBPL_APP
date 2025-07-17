@@ -251,7 +251,8 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
 
       {/* Safety Menu with Toggle */}
       {(accessibleActions.includes("TPI_Expiry/Index") ||
-        accessibleActions.includes("Checklist/Index")) && (
+        accessibleActions.includes("Checklist/Index") ||
+        userData?.type === "Vendor") && (
         <>
           <TouchableOpacity onPress={toggleSafetyMenu}>
             <View style={[styles.menuItem, getMenuStyle("safety")]}>
@@ -291,26 +292,32 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
             }}
           >
             <View style={styles.nestedMenuContainer}>
-              {accessibleActions.includes("TPI_Expiry/Index") && (
-                <DrawerItem
-                  label="Pending TPI Expiry"
-                  onPress={() => props.navigation.navigate("Safety/tpiExpiry")}
-                  icon={({ color }) => (
-                    <Ionicons name="time-outline" size={20} color={color} />
-                  )}
-                  style={getMenuStyle("Safety/tpiExpiry")}
-                />
-              )}
-              {accessibleActions.includes("Checklist/Index") && (
-                <DrawerItem
-                  label="Pending Check List"
-                  onPress={() => props.navigation.navigate("Safety/checklist")}
-                  icon={({ color }) => (
-                    <Ionicons name="list-outline" size={20} color={color} />
-                  )}
-                  style={getMenuStyle("Safety/checklist")}
-                />
-              )}
+              {/* <DrawerItem
+                label="Equipment"
+                onPress={() =>
+                  props.navigation.navigate("Safety/Equipment/equipmentVendor")
+                }
+                icon={({ color }) => (
+                  <Ionicons name="settings" size={20} color={color} />
+                )}
+                style={getMenuStyle("Safety/Equipment/equipmentVendor")}
+              /> */}
+              <DrawerItem
+                label="Pending TPI Expiry"
+                onPress={() => props.navigation.navigate("Safety/tpiExpiry")}
+                icon={({ color }) => (
+                  <Ionicons name="time-outline" size={20} color={color} />
+                )}
+                style={getMenuStyle("Safety/tpiExpiry")}
+              />
+              <DrawerItem
+                label="Pending Check List"
+                onPress={() => props.navigation.navigate("Safety/checklist")}
+                icon={({ color }) => (
+                  <Ionicons name="list-outline" size={20} color={color} />
+                )}
+                style={getMenuStyle("Safety/checklist")}
+              />
             </View>
           </Animated.View>
         </>

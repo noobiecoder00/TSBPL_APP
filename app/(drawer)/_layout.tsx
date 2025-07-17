@@ -246,6 +246,23 @@ export default function DrawerLayout() {
               ),
             }}
           />
+
+          {/* <Drawer.Screen
+            name="Safety/Equipment/equipmentVendor"
+            options={{
+              drawerLabel: "Equipment",
+              title: "Equipment",
+              headerRight: () => (
+                <Image
+                  source={require("@/assets/images/logo.png")}
+                  style={{ width: 100, height: 100, marginRight: 10 }}
+                  resizeMode="contain"
+                  tintColor="#fff"
+                />
+              ),
+            }}
+          /> */}
+
           <Drawer.Screen
             name="Safety/tpiExpiry"
             options={{
