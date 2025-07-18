@@ -4,11 +4,11 @@
     "slug": "tsbplapp",
     "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/tsbpl_app_icon.png",
+    "icon": "./assets/images/netra_app_icon.png",
     "userInterfaceStyle": "light",
     "permissions": ["CAMERA", "LOCATION"],
     "splash": {
-      "image": "./assets/images/tsbpl_app_icon.png",
+      "image": "./assets/images/netra_app_icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -18,14 +18,14 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to mark attendance."
       },
-      "icon": "./assets/images/tsbpl_app_icon.png"
+      "icon": "./assets/images/netra_app_icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/tsbpl_app_icon.png",
+        "foregroundImage": "./assets/images/netra_app_icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "icon": "./assets/images/tsbpl_app_icon.png",
+      "icon": "./assets/images/netra_app_icon.png",
       "edgeToEdgeEnabled": true,
       "versionCode": 2,
       "permissions": [

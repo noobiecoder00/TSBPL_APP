@@ -260,10 +260,8 @@ const BuilderBillingCreateForm = () => {
         } else {
           const items = response.data.data.map((item: any) => ({
             ...item,
-            certifiedQty: 0,
-            balanceQty: parseFloat(
-              (item.scopeQuantity - item.scopeCumQuantity).toFixed(2)
-            ),
+            certifiedQty: "",
+            balanceQty: "Auto Calculate",
             selectedVendor: null,
           }));
           setScopeItems(items);

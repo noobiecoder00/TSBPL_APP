@@ -14,11 +14,13 @@ interface UserData {
   token: string;
   type: string;
 }
+
 export default function ChecklistDetails() {
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [webUrl, setWebUrl] = useState<string | null>(null);
+  const [webViewKey, setWebViewKey] = useState(0); // 🔁 Forcing reload
 
   const loadUserData = async () => {
     try {
@@ -31,12 +33,21 @@ export default function ChecklistDetails() {
     }
   };
 
+  const buildUrl = (user: UserData) => {
+    const encodedUserId = Buffer.from(user.id.toString(), "utf-8").toString(
+      "base64"
+    );
+    const userType = user.type === "User" ? "user" : "vendor";
+    return `${baseURL}/CategoryCheckList/MobileView/${id}?token=${user.token}&UserId=${encodedUserId}&UserType=${userType}&tpi=0`;
+  };
+
   useFocusEffect(
     useCallback(() => {
       const initialize = async () => {
         try {
           dispatch(showLoading());
           await loadUserData();
+          setWebViewKey((prev) => prev + 1); // 🔄 Force reload on focus
         } catch (error) {
           console.error("Error initializing:", error);
         } finally {
@@ -50,14 +61,7 @@ export default function ChecklistDetails() {
 
   useEffect(() => {
     if (userData?.id && id) {
-      const encodedUserId = Buffer.from(
-        userData.id.toString(),
-        "utf-8"
-      ).toString("base64");
-      const userType = userData.type === "User" ? "user" : "vendor";
-      const url = `${baseURL}/CategoryCheckList/MobileView/${id}?token=${userData.token}&UserId=${encodedUserId}&UserType=${userType}&tpi=0`;
-      console.log("Generated URL:", url);
-      setWebUrl(url);
+      setWebUrl(buildUrl(userData));
     }
   }, [userData?.id, id]);
 
@@ -65,6 +69,7 @@ export default function ChecklistDetails() {
     <View style={styles.container}>
       {webUrl ? (
         <WebView
+          key={webViewKey}
           source={{ uri: webUrl }}
           style={styles.webview}
           javaScriptEnabled={true}

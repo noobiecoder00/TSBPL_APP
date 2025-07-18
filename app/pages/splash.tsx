@@ -97,6 +97,10 @@ export default function SplashScreen() {
         source={require("../../assets/images/logo.png")}
         style={styles.logo}
       />
+      <Image
+        source={require("../../assets/images/netra_logo.png")}
+        style={styles.mainlogo}
+      />
       <GradientText text="#ShelterForAll" style={styles.gradientText} />
     </Animated.View>
   );
@@ -106,16 +110,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    padding: 60,
   },
 
   logo: {
     width: width * 0.4,
     height: width * 0.4,
     resizeMode: "contain",
-    marginBottom: 20,
+  },
+
+  mainlogo: {
+    width: width * 0.7,
+    height: width * 0.7,
+    resizeMode: "contain",
+    marginBottom: 120,
   },
 
   gradientText: {

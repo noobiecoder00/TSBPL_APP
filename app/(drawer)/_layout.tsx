@@ -435,6 +435,18 @@ export default function DrawerLayout() {
               drawerLabel: "DPR Entry",
               title: "DPR Entry",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/(drawer)/Construction/DailyProjectProgressEntry/DailyProjectIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -495,6 +507,18 @@ export default function DrawerLayout() {
             options={{
               drawerLabel: "Customer Bill Entry",
               title: "Customer Bill Entry",
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/(drawer)/Construction/CustomerBilling/CustomerBillingIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}
@@ -554,6 +578,18 @@ export default function DrawerLayout() {
             options={{
               drawerLabel: "Builder Bill Entry",
               title: "Builder Bill Entry",
+              headerLeft: () => (
+                <TouchableOpacity
+                  style={{ marginLeft: 15 }}
+                  onPress={() =>
+                    router.push(
+                      "/(drawer)/Construction/BuilderBilling/BuilderBillingIndex"
+                    )
+                  }
+                >
+                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              ),
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}

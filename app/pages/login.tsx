@@ -381,8 +381,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 200,
     resizeMode: "contain",
-    marginBottom: -20,
-    marginRight: 10,
+    marginBottom: 30,
   },
   formContainer: {
     width: "100%",

@@ -139,12 +139,6 @@ const tpiExpiry = () => {
           <InfoRow label="Equipment Name" value={item.equipmentName} />
           <InfoRow label="TPI Expiry Date" value={item.tpI_ExpirationDate} />
           <InfoRow label="Last Checked On" value={item.lastCheckedOn} />
-          <InfoRow
-            label="Pending with"
-            value={item.pendingWith
-              ?.map((p: any) => `${p.name} (${p.roleName})`)
-              .join(", ")}
-          />
         </View>
       </LinearGradient>
     </TouchableOpacity>

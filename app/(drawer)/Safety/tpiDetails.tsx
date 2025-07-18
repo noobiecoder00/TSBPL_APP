@@ -1,4 +1,4 @@
-import { hideLoading, showLoading } from "@/app/store/loaderSlice";
+import Loader from "@/components/Loader";
 import { COLORS } from "@/constants/theme";
 import { baseURL } from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,11 +14,14 @@ interface UserData {
   token: string;
   type: string;
 }
+
 export default function TpiDetails() {
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [webUrl, setWebUrl] = useState<string | null>(null);
+  const [webViewKey, setWebViewKey] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const loadUserData = async () => {
     try {
@@ -31,41 +34,43 @@ export default function TpiDetails() {
     }
   };
 
+  const buildUrl = (user: UserData) => {
+    const encodedUserId = Buffer.from(user.id.toString(), "utf-8").toString(
+      "base64"
+    );
+    const userType = user.type === "User" ? "user" : "vendor";
+    return `${baseURL}/CategoryCheckList/MobileView/${id}?token=${user.token}&UserId=${encodedUserId}&UserType=${userType}&tpi=1`;
+  };
+
   useFocusEffect(
     useCallback(() => {
       const initialize = async () => {
         try {
-          dispatch(showLoading());
+          setLoading(true);
           await loadUserData();
+          setWebViewKey((prev) => prev + 1); // Force WebView reload
         } catch (error) {
           console.error("Error initializing:", error);
         } finally {
-          dispatch(hideLoading());
+          setLoading(false);
         }
       };
-
       initialize();
     }, [id])
   );
 
   useEffect(() => {
     if (userData?.id && id) {
-      const encodedUserId = Buffer.from(
-        userData.id.toString(),
-        "utf-8"
-      ).toString("base64");
-      // const encodedId = Buffer.from(id.toString(), "utf-8").toString("base64");
-      const userType = userData.type === "User" ? "user" : "vendor";
-      const url = `${baseURL}/CategoryCheckList/MobileView/${id}?token=${userData.token}&UserId=${encodedUserId}&UserType=${userType}&tpi=1`;
-      console.log("Generated URL:", url);
-      setWebUrl(url);
+      setWebUrl(buildUrl(userData));
     }
   }, [userData?.id, id]);
 
   return (
     <View style={styles.container}>
-      {webUrl ? (
+      {loading && <Loader />}
+      {webUrl && (
         <WebView
+          key={webViewKey}
           source={{ uri: webUrl }}
           style={styles.webview}
           javaScriptEnabled={true}
@@ -73,7 +78,7 @@ export default function TpiDetails() {
           startInLoadingState={true}
           scalesPageToFit={true}
         />
-      ) : null}
+      )}
     </View>
   );
 }

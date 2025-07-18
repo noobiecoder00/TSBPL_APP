@@ -147,12 +147,6 @@ const checklist = () => {
           <InfoRow label="Equipment Name" value={item.equipmentName} />
           <InfoRow label="Last Checked On" value={item.lastCheckedOn} />
           <InfoRow label="Next Checking" value={item.nextChecking} />
-          <InfoRow
-            label="Pending with"
-            value={item.pendingWith
-              ?.map((p: any) => `${p.name} (${p.roleName})`)
-              .join(", ")}
-          />
         </View>
       </LinearGradient>
     </TouchableOpacity>
