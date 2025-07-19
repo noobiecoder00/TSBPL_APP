@@ -223,6 +223,7 @@ const BuilderEditForm = ({
         Builder_Flow_FlowRemarks: flowRemarks,
         Scopes: scopeItems.map((item) => ({
           RowId: item.id.toString(),
+          ScopeName: item.scopes,
           ScopeQty: item.scopeQuantity,
           scopeCumQTY: item.scopeCumQuantity,
           ScopeQtyInput: item.certifiedQty || 0,
@@ -383,6 +384,8 @@ const BuilderEditForm = ({
               <TextInput
                 style={[styles.input]}
                 value={`${item.scopes}`}
+                multiline
+                numberOfLines={3}
                 onChangeText={(value) => handleScopeItemChange(item.id, value)}
               />
             </View>

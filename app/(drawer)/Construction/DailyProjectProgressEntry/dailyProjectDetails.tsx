@@ -830,7 +830,7 @@ const DailyProjectDetails = () => {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Action Taken</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, styles.disabledInput]}
                         value={
                           flow.status_to === "approve"
                             ? "Approved"
@@ -849,7 +849,11 @@ const DailyProjectDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Remarks</Text>
                   <TextInput
-                    style={[styles.input, styles.multilineInput]}
+                    style={[
+                      styles.input,
+                      styles.disabledInput,
+                      styles.multilineInput,
+                    ]}
                     value={flow.actionTaken}
                     editable={false}
                     multiline
@@ -860,7 +864,7 @@ const DailyProjectDetails = () => {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Action Taken Date Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.disabledInput]}
                     value={formatDateTime(flow.actionTakenDatetime)}
                     editable={false}
                   />
@@ -875,7 +879,7 @@ const DailyProjectDetails = () => {
                           file={{
                             uri: `${baseURL}/uploads/DPR_FlowActionfiles/${flow.document}`,
                             name: flow.document,
-                            type: "application/pdf",
+                            type: flow.document.split(".").pop()?.toLowerCase(),
                           }}
                         />
                       ) : (
@@ -1014,17 +1018,7 @@ const DailyProjectDetails = () => {
               <TextInput
                 value={tabUserName || ""}
                 editable={false}
-                style={styles.input}
-              />
-            </View>
-
-            {/* Escalation Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Escalation Date</Text>
-              <TextInput
-                value={autoSlgTargetDate || ""}
-                editable={false}
-                style={styles.input}
+                style={[styles.input, styles.disabledInput]}
               />
             </View>
 

@@ -106,7 +106,9 @@ export default function DrawerLayout() {
               headerLeft: () => (
                 <TouchableOpacity
                   style={{ marginLeft: 15 }}
-                  onPress={() => router.push("/home")}
+                  onPress={() =>
+                    router.push("/Vendor/cwAttendance/viewAttendance")
+                  }
                 >
                   <Ionicons name="arrow-back-outline" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -128,14 +130,7 @@ export default function DrawerLayout() {
               drawerLabel: "View Attendance",
               title: "View Attendance",
               drawerItemStyle: { height: 0 }, // Hide this too, custom nested render
-              headerLeft: () => (
-                <TouchableOpacity
-                  style={{ marginLeft: 15 }}
-                  onPress={() => router.push("/home")}
-                >
-                  <Ionicons name="arrow-back-outline" size={24} color="#fff" />
-                </TouchableOpacity>
-              ),
+
               headerRight: () => (
                 <Image
                   source={require("@/assets/images/logo.png")}

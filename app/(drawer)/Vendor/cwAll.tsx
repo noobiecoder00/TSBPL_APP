@@ -29,7 +29,7 @@ interface CWListResponse {
   data?: any;
 }
 
-const cwAll = () => {
+const CWAll = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
@@ -116,6 +116,7 @@ const cwAll = () => {
 
   useFocusEffect(
     useCallback(() => {
+      console.log("Hellow!");
       resetState();
       fetchData();
     }, [])
@@ -352,4 +353,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default cwAll;
+export default CWAll;

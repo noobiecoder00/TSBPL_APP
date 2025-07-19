@@ -4,6 +4,7 @@ import { API_ENDPOINTS } from "@/constants/apiEndpoints";
 import { COLORS, SIZES } from "@/constants/theme";
 import httpClient from "@/utils/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Buffer } from "buffer";
 import {
   BarcodeScanningResult,
   CameraView,
@@ -14,6 +15,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  BackHandler,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,6 +39,7 @@ interface SubProject {
 }
 interface UserData {
   id: string;
+  type: string;
 }
 
 const CWAttendance = () => {
@@ -82,9 +85,17 @@ const CWAttendance = () => {
 
   useFocusEffect(
     useCallback(() => {
-      resetStates();
-      loadUserData();
-      fetchProjectNos();
+      const init = async () => {
+        resetStates();
+        const user = await loadUserData(); // modified to return parsed user
+        if (user?.id && user?.type) {
+          await fetchProjectNos(user); // pass user directly
+        } else {
+          console.warn("User data is missing. Cannot fetch project numbers.");
+        }
+      };
+
+      init(); // Call the async function
     }, [])
   );
 
@@ -98,15 +109,18 @@ const CWAttendance = () => {
     checkLocationPermission();
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = async (): Promise<UserData | null> => {
     try {
       const userDataString = await AsyncStorage.getItem("userData");
       if (userDataString) {
-        setUserData(JSON.parse(userDataString));
+        const parsed = JSON.parse(userDataString);
+        setUserData(parsed);
+        return parsed;
       }
     } catch (error) {
       console.error("Error loading user data:", error);
     }
+    return null;
   };
 
   const RequiredLabel = ({ label }: { label: string }) => (
@@ -116,12 +130,24 @@ const CWAttendance = () => {
     </Text>
   );
 
-  const fetchProjectNos = async () => {
+  const fetchProjectNos = async (user: UserData) => {
+    if (!user.id || !user.type) {
+      console.warn("User data not loaded yet.");
+      return;
+    }
+
     try {
       dispatch(showLoading());
       setError(null);
-      const response = await httpClient.get(API_ENDPOINTS.PROJECT_NO.LIST);
-      setProjectNos(response.data);
+      const encodedUserId = user.id
+        ? Buffer.from(user.id.toString(), "utf-8").toString("base64")
+        : "";
+      const userType = user.type?.toLowerCase() || "";
+      const requestUrl = `${API_ENDPOINTS.PROJECT_NO.LIST}?userIdEncrypted=${encodedUserId}&userType=${userType}`;
+
+      console.log("Fetching project numbers from:", requestUrl);
+      const response = await httpClient.get(requestUrl);
+      setProjectNos(response.data.data);
     } catch (error) {
       console.error("Error fetching project nos:", error);
       setError("Failed to load project nos. Please try again.");
@@ -305,6 +331,31 @@ const CWAttendance = () => {
       dispatch(hideLoading());
     }
   };
+
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert("Hold on!", "Are you sure you want to go back?", [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel",
+        },
+        {
+          text: "YES",
+          onPress: () => {
+            // Remove back handler before navigating
+            backHandler.remove();
+            router.replace("/(drawer)/Vendor/cwAttendance/viewAttendance");
+          },
+        },
+      ]);
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+  }, []);
 
   const resetStates = () => {
     setProjectNos([]);

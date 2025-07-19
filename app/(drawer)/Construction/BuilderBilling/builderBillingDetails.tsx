@@ -755,7 +755,7 @@ const CustomerBillingDetails = () => {
                           file={{
                             uri: `${baseURL}/uploads/Builder_FlowActionfiles/${flow.document}`,
                             name: flow.document,
-                            type: "application/pdf",
+                            type: flow.document.split(".").pop()?.toLowerCase(),
                           }}
                         />
                       ) : (
@@ -894,17 +894,7 @@ const CustomerBillingDetails = () => {
               <TextInput
                 value={tabUserName || ""}
                 editable={false}
-                style={styles.input}
-              />
-            </View>
-
-            {/* Escalation Date */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Escalation Date</Text>
-              <TextInput
-                value={autoSlgTargetDate || ""}
-                editable={false}
-                style={styles.input}
+                style={[styles.input, styles.disabledInput]}
               />
             </View>
 

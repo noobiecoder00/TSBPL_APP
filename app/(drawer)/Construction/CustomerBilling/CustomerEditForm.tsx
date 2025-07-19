@@ -297,6 +297,8 @@ const CustomerEditForm = ({
               <TextInput
                 style={[styles.input, styles.disabledInput]}
                 value={`${item.scopes} (${item.uom})`}
+                multiline
+                numberOfLines={3}
                 editable={false}
               />
             </View>

@@ -161,14 +161,18 @@ export const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (
           )}
         </View>
       </View>
-      <DrawerItem
-        label="Dashboard"
-        onPress={() => props.navigation.navigate("home")}
-        icon={({ color }) => (
-          <Ionicons name="grid-outline" size={24} color={color} />
-        )}
-        style={getMenuStyle("home")}
-      />
+      {userData?.type === "User" && (
+        <>
+          <DrawerItem
+            label="Dashboard"
+            onPress={() => props.navigation.navigate("home")}
+            icon={({ color }) => (
+              <Ionicons name="grid-outline" size={24} color={color} />
+            )}
+            style={getMenuStyle("home")}
+          />
+        </>
+      )}
 
       {/* accessibleActions.includes("VendorMaster/Details") ||
         accessibleActions.includes("VendorMaster/Create") ||
