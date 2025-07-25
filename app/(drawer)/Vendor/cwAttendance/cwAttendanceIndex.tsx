@@ -100,6 +100,10 @@ const CWAttendance = () => {
   );
 
   useEffect(() => {
+    console.log("🔍 cameraPermission state:", cameraPermission);
+  }, [cameraPermission]);
+
+  useEffect(() => {
     if (selectedProjectNo) {
       fetchSubProjects();
     }
@@ -189,16 +193,18 @@ const CWAttendance = () => {
   const checkLocationPermission = async () => {
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
+      console.log("📍 Location permission status:", status);
       setLocationPermission(status);
       if (status === "granted") {
         const location = await Location.getCurrentPositionAsync({});
+        console.log("📍 Got location:", location.coords);
         setCurrentLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
       }
     } catch (error) {
-      console.error("Error checking location permission:", error);
+      console.error("🔴 Error checking location permission:", error);
     }
   };
 
@@ -379,10 +385,26 @@ const CWAttendance = () => {
     title: subProject.buildingName,
   }));
 
+  if (
+    cameraPermission === null ||
+    locationPermission === null ||
+    userData === null
+  ) {
+    console.log("⏳ Waiting for permissions or user data...");
+    return (
+      <View style={styles.container}>
+        <Text style={{ textAlign: "center" }}>Loading permissions...</Text>
+      </View>
+    );
+  }
+
   return (
     <AutocompleteDropdownContextProvider>
-      {isScanning ? (
-        <View style={StyleSheet.absoluteFill}>
+      {isScanning && cameraPermission?.granted ? (
+        <View style={{ flex: 1, backgroundColor: "black" }}>
+          <Text style={{ color: "#fff", textAlign: "center", marginTop: 30 }}>
+            📸 Scanning...
+          </Text>
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"

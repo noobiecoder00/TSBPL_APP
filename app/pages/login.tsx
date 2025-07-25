@@ -163,8 +163,8 @@ export default function LoginScreen() {
           router.replace("/(drawer)/Vendor/cwAttendance/cwAttendanceIndex");
         }
 
-        // router.replace("/(drawer)/home");
-        //console.log("Navigated to /home");
+        router.replace("/(drawer)/home");
+        console.log("Navigated to /home");
       } else {
         console.log("Login failed:", response.data);
         setAlert({
@@ -288,7 +288,7 @@ export default function LoginScreen() {
           style={[styles.input, errors.email && styles.inputError]}
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter your Emp ID"
+          placeholder="Enter your Employee ID"
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 

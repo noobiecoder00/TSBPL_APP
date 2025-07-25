@@ -26,18 +26,19 @@ export default function Home() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [webUrl, setWebUrl] = useState<string | null>(null);
   const dispatch = useDispatch();
+
   useEffect(() => {
-    dispatch(showLoading());
     const loadUserData = async () => {
       dispatch(showLoading());
       try {
         const userDataString = await AsyncStorage.getItem("userData");
         if (userDataString) {
-          setUserData(JSON.parse(userDataString));
+          const parsedData: UserData = JSON.parse(userDataString);
+          setUserData(parsedData);
         }
-        dispatch(hideLoading());
       } catch (error) {
         console.error("Error loading user data:", error);
+      } finally {
         dispatch(hideLoading());
       }
     };
@@ -45,15 +46,24 @@ export default function Home() {
     loadUserData();
   }, []);
 
+  // Redirect if force = Y
   useEffect(() => {
     if (userData?.force === "Y") {
-      router.push("/changePwd");
+      router.replace("/changePwd");
     }
-  }, [userData]);
+  }, [userData?.force]);
 
+  // Redirect vendors to attendance
   useEffect(() => {
-    if (userData?.id) {
-      // console.log("userData", userData.type);
+    if (userData?.type === "Vendor") {
+      console.log("Redirecting to Take Attendace!");
+      router.replace("/Vendor/cwAttendance/cwAttendanceIndex");
+    }
+  }, [userData?.type]);
+
+  // Set dashboard URL if non-vendor
+  useEffect(() => {
+    if (userData?.id && userData?.type !== "Vendor") {
       const encodedUserId = Buffer.from(
         userData.id.toString(),
         "utf-8"
@@ -62,11 +72,11 @@ export default function Home() {
       console.log("Dashboard URL:", url);
       setWebUrl(url);
     }
-  }, [userData?.id]);
+  }, [userData?.id, userData?.type]);
 
   return (
     <View style={styles.container}>
-      {webUrl && userData?.type !== "Vendor" ? (
+      {webUrl && userData?.type !== "Vendor" && (
         <WebView
           source={{ uri: webUrl }}
           style={styles.webview}
@@ -75,8 +85,6 @@ export default function Home() {
           startInLoadingState={true}
           scalesPageToFit={true}
         />
-      ) : (
-        <View></View>
       )}
     </View>
   );

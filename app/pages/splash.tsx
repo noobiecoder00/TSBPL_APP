@@ -26,6 +26,7 @@ const GradientText = ({ text, style }: GradientTextProps) => (
 
 export default function SplashScreen() {
   const router = useRouter();
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   console.log("[Splash] Rendering splash screen");
@@ -52,6 +53,7 @@ export default function SplashScreen() {
       try {
         console.log("[Splash] Checking authentication");
         const userData = await AsyncStorage.getItem("userData");
+        const userDataObj = JSON.parse(userData || "");
         console.log("[Splash] User data exists:", !!userData);
 
         // Wait for 3 seconds to show splash screen
@@ -67,7 +69,12 @@ export default function SplashScreen() {
         await fadeOut();
         if (userData) {
           console.log("[Splash] User authenticated, navigating to home");
-          router.replace("/(drawer)/home");
+          console.log("Session : ", userData);
+          if (userDataObj.type === "Vendor") {
+            router.replace("/(drawer)/Vendor/cwAttendance/cwAttendanceIndex");
+          } else {
+            router.replace("/(drawer)/home");
+          }
         } else {
           console.log("[Splash] No user data, navigating to login");
           router.replace("/pages/login");
